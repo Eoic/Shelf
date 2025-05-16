@@ -1,24 +1,24 @@
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
-backend-path = ["."] # Tells build tools to look for setuptools in the current directory if not installed globally
+backend-path = ["."]
 
 [project]
-name = "ebook-manager-api"
-version = "0.1.0" # You can manage this manually or use a tool like setuptools_scm
+name = "shelf"
+version = "0.1.0"
 description = "A FastAPI application for uploading, processing, and managing e-book files."
 readme = "README.md"
-requires-python = ">=3.9" # Specify your target Python version
-license = {text = "MIT"} # Or {file = "LICENSE.txt"}, or choose another like "Proprietary"
+requires-python = ">=3.9"
+license = {text = "MIT"}
 authors = [
-    {name = "Your Name / Organization", email = "your.email@example.com"},
+    {name = "Karolis Strazdas", email = "karolis.strazdas@protonmail.com"},
 ]
 keywords = ["ebook", "parser", "fastapi", "api", "metadata", "digital-library"]
 
 classifiers = [
-    "Development Status :: 3 - Alpha", # Or "4 - Beta", "5 - Production/Stable"
+    "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License", # Change if you use a different license
+    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
@@ -34,117 +34,97 @@ classifiers = [
 
 dependencies = [
     "fastapi",
-    "uvicorn[standard]", # Includes gunicorn, ujson, httptools, etc.
-    "pydantic>=2.0", # Assuming Pydantic v2 features are used
-    "pydantic-settings", # For settings management with Pydantic
-    "python-multipart", # For file uploads
-    "motor>=3.0", # For MongoDB with asyncio
-    "ebooklib>=0.18", # For EPUB parsing
-    "pymupdf", # For PDF parsing (Fitz)
-    "celery>=5.0", # Optional: for background tasks
-    "redis>=4.0", # Optional: if using Redis as Celery broker or for caching
-    "python-dotenv>=0.19", # For loading .env files
-    "passlib[bcrypt]", # Example, if you add user auth
-    "python-jose[cryptography]", # Example, for JWT tokens
-    "beautifulsoup4", # For parsing HTML content (e.g., in EPUB descriptions)
-    "Pillow", # For image processing (covers)
-    "python-magic", # Optional: for more reliable MIME type detection if needed
+    "uvicorn[standard]",
+    "pydantic>=2.0",
+    "pydantic-settings",
+    "python-multipart",
+    "motor>=3.0",
+    "ebooklib>=0.18",
+    "pymupdf",
+    "celery>=5.0",
+    "redis>=4.0",
+    "python-dotenv>=0.19",
+    "passlib[bcrypt]",
+    "python-jose[cryptography]",
+    "beautifulsoup4",
+    "Pillow",
+    "python-magic", 
 ]
 
 [project.optional-dependencies]
 test = [
     "pytest>=7.0",
-    "pytest-asyncio", # For testing async FastAPI code
-    "httpx>=0.23", # For making async requests in tests
-    # "requests", # If you have synchronous test utilities
+    "pytest-asyncio",
+    "httpx>=0.23",
 ]
 dev = [
-    "ruff", # Linter and formatter
-    "pre-commit", # For running checks before commit
-    # Add other dev tools like mypy, coverage, etc.
+    "ruff",
+    "pre-commit",
+    "coverage",
 ]
-# You can combine them for a "full" install:
-# pip install -e ".[test,dev]"
 
 [project.urls]
-Homepage = "https://example.com/ebook-manager" # Replace with your project's URL
-Repository = "https://github.com/yourusername/ebook-manager-api" # Replace
-# Documentation = "https://yourusername.github.io/ebook-manager-api/" # If you have separate docs
+Homepage = "https://github.com/Eoic/Shelf"
+Repository = "https://github.com/Eoic/Shelf"
 
-# If you have command-line scripts (not typical for just running uvicorn, but for other utilities)
-# [project.scripts]
-# ebook-cli = "ebook_manager.cli:main"
+
+
 
 [tool.setuptools]
-# If your packages are not in the root, or you have a src/ layout:
-# package-dir = {"" = "src"}
-packages = ["api", "core", "db", "models", "parsers", "services", "tests"] # List your top-level packages
-# Or use find:
-# [tool.setuptools.packages.find]
-# where = ["."]  # Or "src" if using a src layout
-# include = ["your_package_name*"]
-# exclude = ["tests*"] # Example: exclude tests from the wheel
-
-# Include non-Python files within your packages (e.g., templates, static files if any)
-# [tool.setuptools.package-data]
-# your_package_name = ["*.json", "templates/*", "static/*"]
+packages = ["api", "core", "db", "models", "parsers", "services", "tests"] 
 
 [tool.pytest.ini_options]
 python_files = "test_*.py tests_*.py"
-asyncio_mode = "auto" # or "strict"
-# addopts = "--cov=your_package_name --cov-report=html" # For coverage
-# testpaths = ["tests"]
+asyncio_mode = "auto"
 
 [tool.ruff]
-# See Ruff documentation for all options: https://docs.astral.sh/ruff/configuration/
 line-length = 88
 indent-width = 4
-target-version = "py39" # Set to your minimum supported Python version
+target-version = "py39"
 
 [tool.ruff.lint]
 select = [
-    "E",  # pycodestyle errors
-    "W",  # pycodestyle warnings
-    "F",  # Pyflakes
-    "I",  # isort
-    "C90", # McCabe complexity
-    "N",  # pep8-naming
-    "UP", # pyupgrade
-    "B",  # flake8-bugbear
-    "A",  # flake8-builtins
-    "SIM",# flake8-simplify
-    "PTH",# flake8-use-pathlib
-    "ERA",# eradicate
-    "S",  # bandit (security)
-    "T20", # flake8-print
-    "PYI", # flake8-pyi
-    "PT", # flake8-pytest-style
-    "Q", # flake8-quotes
-    "COM", # flake8-commas
-    "LOG", # flake8-logging-format
-    "G", # flake8-logging-format
-    "ISC", # flake8-implicit-str-concat
-    "ICN", # flake8-import-conventions
-    "TID", # flake8-tidy-imports
-    "ARG", # flake8-unused-arguments
-    "DTZ", # flake8-datetimez
-    "TRY", # tryceratops
-    "RUF", # Ruff-specific rules
+    "E",  
+    "W",  
+    "F",  
+    "I",  
+    "C90", 
+    "N",  
+    "UP", 
+    "B",  
+    "A",  
+    "SIM",
+    "PTH",
+    "ERA",
+    "S",  
+    "T20", 
+    "PYI", 
+    "PT", 
+    "Q", 
+    "COM", 
+    "LOG", 
+    "G", 
+    "ISC", 
+    "ICN", 
+    "TID", 
+    "ARG", 
+    "DTZ", 
+    "TRY", 
+    "RUF", 
 ]
 ignore = [
-    "E501", # Line too long (handled by formatter)
-    "B008", # Do not perform function calls in argument defaults (sometimes okay)
-    "S101", # Use of assert detected (fine in tests)
-    "ARG001", # Unused function argument (self, cls)
-    "ARG002", # Unused method argument (self)
+    "E501", 
+    "B008", 
+    "S101", 
+    "ARG001", 
+    "ARG002", 
 ]
-# Fixable rules will be auto-fixed by `ruff --fix`
 fixable = ["ALL"]
 unfixable = []
 
 [tool.ruff.lint.isort]
-known-first-party = ["api", "core", "db", "models", "parsers", "services"] # Your project's modules
-# force-sort-within-sections = true
+known-first-party = ["api", "core", "db", "models", "parsers", "services"]
+force-sort-within-sections = true
 
 [tool.ruff.format]
 quote-style = "double"
