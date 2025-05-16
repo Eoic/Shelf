@@ -172,3 +172,9 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Uploads.
+storage/ebook_files/*
+storage/covers/*
+!storage/ebook_files/.gitkeep
+!storage/covers/.gitkeep
