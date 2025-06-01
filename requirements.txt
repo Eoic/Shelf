@@ -12,3 +12,5 @@ passlib[bcrypt]
 jose[cryptography]
 pytest
 httpx
+bs4
+Pillow

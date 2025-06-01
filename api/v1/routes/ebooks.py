@@ -154,7 +154,7 @@ async def list_ebooks(
     ebook_service: EbookService = Depends(get_ebook_service),
 ):
     """
-    Lists e-books with pagination and optional search.
+    Lists books with pagination and optional search.
     """
     ebooks_data, total_items = await ebook_service.get_multiple_ebooks(
         skip=skip, limit=limit, search_query=search_query
