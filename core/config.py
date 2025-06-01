@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     MONGO_DATABASE_NAME: str
 
     # Storage
-    EBOOK_FILES_DIR: Path = Path("./storage/ebook_files")
+    EBOOK_FILES_DIR: Path = Path("./storage/books")
     COVER_FILES_DIR: Path = Path("./storage/covers")
     # Ensure these directories exist or create them at startup
     # Could add a validator or startup hook in main.py

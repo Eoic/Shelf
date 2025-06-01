@@ -9,9 +9,9 @@ import io
 from fastapi import Depends, HTTPException
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from db.database import get_db_session
-from db import ebook_crud
-from api.v1.schemas.ebook_schemas import EbookCreate, EbookUpdate, EbookInDB
+from database.database import get_db_session
+from database import book_crud
+from api.v1.schemas.book_schemas import EbookCreate, EbookUpdate, EbookInDB
 from core.config import settings
 
 from parsers.base_parser import EbookParser
@@ -49,7 +49,7 @@ class EbookService:
     ) -> EbookInDB:
         # 1. Generate Hash and Check for Duplicates
         file_hash = self._generate_file_hash(file_path)
-        existing_ebook = await ebook_crud.get_ebook_by_hash(self.db, file_hash)
+        existing_ebook = await book_crud.get_ebook_by_hash(self.db, file_hash)
         if existing_ebook:
             # If duplicate, decide on behavior: error, return existing, or update existing.
             # For now, let's assume we don't want exact duplicates based on content hash.
@@ -166,7 +166,7 @@ class EbookService:
             ebook_data_to_create["cover_image_filename"] = cover_filename
 
         # 7. Save Metadata to Database
-        created_db_ebook = await ebook_crud.create_ebook_metadata(
+        created_db_ebook = await book_crud.create_ebook_metadata(
             self.db, ebook_data_to_create
         )
 
@@ -181,21 +181,21 @@ class EbookService:
     async def get_multiple_ebooks(
         self, skip: int, limit: int, search_query: Optional[str]
     ) -> Tuple[List[Dict[str, Any]], int]:
-        return await ebook_crud.get_all_ebooks(self.db, skip, limit, search_query)
+        return await book_crud.get_all_ebooks(self.db, skip, limit, search_query)
 
     async def get_ebook_by_id(self, ebook_id: str) -> Optional[Dict[str, Any]]:
-        return await ebook_crud.get_ebook_by_id(self.db, ebook_id)
+        return await book_crud.get_ebook_by_id(self.db, ebook_id)
 
     async def update_ebook(
         self, ebook_id: str, ebook_update_data: EbookUpdate
     ) -> Optional[Dict[str, Any]]:
         # TODO: Add logic if cover image needs to be re-processed or files changed
-        return await ebook_crud.update_ebook_metadata(
+        return await book_crud.update_ebook_metadata(
             self.db, ebook_id, ebook_update_data
         )
 
     async def delete_ebook_by_id(self, ebook_id: str) -> int:
-        ebook_to_delete = await ebook_crud.get_ebook_by_id(self.db, ebook_id)
+        ebook_to_delete = await book_crud.get_ebook_by_id(self.db, ebook_id)
         if not ebook_to_delete:
             return 0
 
@@ -215,7 +215,7 @@ class EbookService:
                 cover_to_delete.unlink()
             # Also delete thumbnail if you have one
 
-        return await ebook_crud.delete_ebook_metadata(self.db, ebook_id)
+        return await book_crud.delete_ebook_metadata(self.db, ebook_id)
 
     async def get_ebook_cover_path(
         self, ebook_id: str

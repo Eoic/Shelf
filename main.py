@@ -3,9 +3,9 @@ from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from fastapi import FastAPI
 
-from api.v1.routes import ebooks as ebooks_v1_router
+from api.v1.routes import books as ebooks_v1_router
 from core.config import settings
-from db.database import close_mongo_connection, connect_to_mongo
+from database.database import close_mongo_connection, connect_to_mongo
 
 load_dotenv()
 

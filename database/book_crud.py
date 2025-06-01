@@ -4,7 +4,7 @@ from typing import List, Tuple, Optional, Dict, Any
 from datetime import datetime
 import re  # For regex search
 
-from api.v1.schemas.ebook_schemas import (
+from api.v1.schemas.book_schemas import (
     EbookCreate,
     EbookUpdate,
     EbookInDB,

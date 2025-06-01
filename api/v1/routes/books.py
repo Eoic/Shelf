@@ -1,6 +1,6 @@
-import shutil
 from datetime import datetime
 from pathlib import Path
+import shutil
 from typing import Optional
 
 from fastapi import (
@@ -14,17 +14,16 @@ from fastapi import (
     UploadFile,
 )
 
-from api.v1.schemas.ebook_schemas import (
+from api.v1.schemas.book_schemas import (
     EbookDisplay,
     EbookUpdate,
     PaginatedEbookResponse,
 )
-from services.ebook_service import EbookService, get_ebook_service
+from services.book_service import EbookService, get_ebook_service
 
 router = APIRouter()
 
 
-# --- Helper function to construct URLs ---
 def get_base_url(request: Request) -> str:
     # For production, ensure X-Forwarded-Proto and X-Forwarded-Host are handled if behind a proxy
     return str(request.base_url)
