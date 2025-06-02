@@ -5,6 +5,7 @@ from ebooklib import epub
 from bs4 import BeautifulSoup  # For parsing HTML in description
 
 from .base_parser import BookParser
+from core.logger import logger
 
 
 class EpubParser(BookParser):
@@ -81,7 +82,7 @@ class EpubParser(BookParser):
             metadata["format"] = "EPUB"
 
         except Exception as e:
-            print(f"Error parsing EPUB metadata for {file_path}: {e}")
+            logger.error(f"Error parsing EPUB metadata for {file_path}: {e}")
             # Optionally, re-raise or return partial metadata with an error flag
             metadata["parsing_error"] = str(e)
 
@@ -130,5 +131,5 @@ class EpubParser(BookParser):
             if cover_item:
                 return cover_item.get_content(), cover_item.get_media_type()
         except Exception as e:
-            print(f"Error extracting EPUB cover for {file_path}: {e}")
+            logger.error(f"Error extracting EPUB cover for {file_path}: {e}")
         return None

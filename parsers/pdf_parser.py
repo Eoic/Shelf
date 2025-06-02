@@ -3,6 +3,7 @@ from typing import Dict, Any, Optional, Tuple
 import fitz  # PyMuPDF
 
 from .base_parser import BookParser
+from core.logger import logger
 
 
 class PdfParser(BookParser):
@@ -43,7 +44,7 @@ class PdfParser(BookParser):
             # metadata_dict['page_count'] = doc.page_count # Easy to get for PDF
             doc.close()
         except Exception as e:
-            print(f"Error parsing PDF metadata for {file_path}: {e}")
+            logger.error(f"Error parsing PDF metadata for {file_path}: {e}")
             metadata_dict["parsing_error"] = str(e)
         return metadata_dict
 
@@ -60,5 +61,5 @@ class PdfParser(BookParser):
                 return img_bytes, "image/png"
             doc.close()
         except Exception as e:
-            print(f"Error extracting PDF cover for {file_path}: {e}")
+            logger.error(f"Error extracting PDF cover for {file_path}: {e}")
         return None
