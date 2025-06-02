@@ -75,7 +75,7 @@ docs/_build/
 .pybuilder/
 target/
 
-# Jupyter Notebook
+# Jupyter Notbook
 .ipynb_checkpoints
 
 # IPython
@@ -174,7 +174,7 @@ cython_debug/
 .pypirc
 
 # Uploads.
-storage/ebook_files/*
+storage/book_files/*
 storage/covers/*
-!storage/ebook_files/.gitkeep
+!storage/book_files/.gitkeep
 !storage/covers/.gitkeep

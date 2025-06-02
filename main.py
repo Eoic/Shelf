@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from fastapi import FastAPI
 
-from api.v1.routes import books as ebooks_v1_router
+from api.v1.routes import books as books_v1_router
 from core.config import settings
 from database.database import close_mongo_connection, connect_to_mongo
 
@@ -15,7 +15,7 @@ async def lifespan(app: FastAPI):
     await connect_to_mongo()
     from pathlib import Path
 
-    Path(settings.EBOOK_FILES_DIR).mkdir(parents=True, exist_ok=True)
+    Path(settings.BOOK_FILES_DIR).mkdir(parents=True, exist_ok=True)
     Path(settings.COVER_FILES_DIR).mkdir(parents=True, exist_ok=True)
     yield
 
@@ -29,8 +29,8 @@ app = FastAPI(
 )
 
 app.include_router(
-    ebooks_v1_router.router,
-    prefix="/api/v1/ebooks",
+    books_v1_router.router,
+    prefix="/api/v1/books",
     tags=["Shelf V1"],
 )
 

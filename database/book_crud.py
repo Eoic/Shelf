@@ -5,12 +5,12 @@ from datetime import datetime
 import re  # For regex search
 
 from api.v1.schemas.book_schemas import (
-    EbookCreate,
-    EbookUpdate,
-    EbookInDB,
-)  # Using EbookCreate for structure
+    BookCreate,
+    BookUpdate,
+    BookInDB,
+)  # Using BookCreate for structure
 
-EBOOK_COLLECTION = "ebooks"
+BOOK_COLLECTION = "books"
 
 
 # --- Helper to convert Pydantic model to dict for MongoDB, handling None values ---
@@ -20,33 +20,33 @@ def model_to_dict(model, exclude_unset=True, exclude_none=True):
     )  # Pydantic V2
 
 
-async def create_ebook_metadata(
-    db: AsyncIOMotorDatabase, ebook_data: Dict[str, Any]
+async def create_book_metadata(
+    db: AsyncIOMotorDatabase, book_data: Dict[str, Any]
 ) -> Dict[str, Any]:
-    ebook_data["upload_timestamp"] = datetime.utcnow()
-    ebook_data["last_modified_timestamp"] = datetime.utcnow()
-    result = await db[EBOOK_COLLECTION].insert_one(ebook_data)
-    created_ebook = await db[EBOOK_COLLECTION].find_one({"_id": result.inserted_id})
-    return created_ebook  # type: ignore
+    book_data["upload_timestamp"] = datetime.utcnow()
+    book_data["last_modified_timestamp"] = datetime.utcnow()
+    result = await db[BOOK_COLLECTION].insert_one(book_data)
+    created_book = await db[BOOK_COLLECTION].find_one({"_id": result.inserted_id})
+    return created_book  # type: ignore
 
 
-async def get_ebook_by_id(
-    db: AsyncIOMotorDatabase, ebook_id: str
+async def get_book_by_id(
+    db: AsyncIOMotorDatabase, book_id: str
 ) -> Optional[Dict[str, Any]]:
-    if not ObjectId.is_valid(ebook_id):
+    if not ObjectId.is_valid(book_id):
         return None
-    return await db[EBOOK_COLLECTION].find_one({"_id": ObjectId(ebook_id)})
+    return await db[BOOK_COLLECTION].find_one({"_id": ObjectId(book_id)})
 
 
-async def get_ebook_by_hash(
+async def get_book_by_hash(
     db: AsyncIOMotorDatabase, file_hash: str
 ) -> Optional[Dict[str, Any]]:
-    return await db[EBOOK_COLLECTION].find_one(
+    return await db[BOOK_COLLECTION].find_one(
         {"md5_hash": file_hash}
     )  # Or whatever hash you use
 
 
-async def get_all_ebooks(
+async def get_all_books(
     db: AsyncIOMotorDatabase,
     skip: int = 0,
     limit: int = 10,
@@ -63,36 +63,34 @@ async def get_all_ebooks(
             {"tags": {"$regex": regex}},  # Assuming tags is a list of strings
         ]
 
-    cursor = db[EBOOK_COLLECTION].find(query_filter).skip(skip).limit(limit)
-    ebooks = await cursor.to_list(length=limit)
-    total_count = await db[EBOOK_COLLECTION].count_documents(query_filter)
-    return ebooks, total_count
+    cursor = db[BOOK_COLLECTION].find(query_filter).skip(skip).limit(limit)
+    books = await cursor.to_list(length=limit)
+    total_count = await db[BOOK_COLLECTION].count_documents(query_filter)
+    return books, total_count
 
 
-async def update_ebook_metadata(
-    db: AsyncIOMotorDatabase, ebook_id: str, ebook_update_data: EbookUpdate
+async def update_book_metadata(
+    db: AsyncIOMotorDatabase, book_id: str, book_update_data: BookUpdate
 ) -> Optional[Dict[str, Any]]:
-    if not ObjectId.is_valid(ebook_id):
+    if not ObjectId.is_valid(book_id):
         return None
 
-    update_data = model_to_dict(
-        ebook_update_data, exclude_unset=True, exclude_none=True
-    )
+    update_data = model_to_dict(book_update_data, exclude_unset=True, exclude_none=True)
     if not update_data:  # No actual fields to update
-        return await get_ebook_by_id(db, ebook_id)  # Return current data
+        return await get_book_by_id(db, book_id)  # Return current data
 
     update_data["last_modified_timestamp"] = datetime.utcnow()
 
-    result = await db[EBOOK_COLLECTION].find_one_and_update(
-        {"_id": ObjectId(ebook_id)},
+    result = await db[BOOK_COLLECTION].find_one_and_update(
+        {"_id": ObjectId(book_id)},
         {"$set": update_data},
         return_document=True,  # MongoDB specific: use ReturnDocument.AFTER with PyMongo
     )
     return result
 
 
-async def delete_ebook_metadata(db: AsyncIOMotorDatabase, ebook_id: str) -> int:
-    if not ObjectId.is_valid(ebook_id):
+async def delete_book_metadata(db: AsyncIOMotorDatabase, book_id: str) -> int:
+    if not ObjectId.is_valid(book_id):
         return 0
-    result = await db[EBOOK_COLLECTION].delete_one({"_id": ObjectId(ebook_id)})
+    result = await db[BOOK_COLLECTION].delete_one({"_id": ObjectId(book_id)})
     return result.deleted_count

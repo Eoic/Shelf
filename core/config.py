@@ -4,7 +4,7 @@ from pathlib import Path
 
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "E-Book Manager API"
+    PROJECT_NAME: str = "Book Manager API"
     PROJECT_VERSION: str = "0.1.0"
 
     # Database
@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     MONGO_DATABASE_NAME: str
 
     # Storage
-    EBOOK_FILES_DIR: Path = Path("./storage/books")
+    BOOK_FILES_DIR: Path = Path("./storage/books")
     COVER_FILES_DIR: Path = Path("./storage/covers")
     # Ensure these directories exist or create them at startup
     # Could add a validator or startup hook in main.py
@@ -36,5 +36,5 @@ settings = Settings()
 
 # Create storage directories if they don't exist
 # This is a simple way; for more robust solutions, consider startup events in FastAPI
-settings.EBOOK_FILES_DIR.mkdir(parents=True, exist_ok=True)
+settings.BOOK_FILES_DIR.mkdir(parents=True, exist_ok=True)
 settings.COVER_FILES_DIR.mkdir(parents=True, exist_ok=True)

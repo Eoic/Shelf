@@ -2,10 +2,10 @@ from pathlib import Path
 from typing import Dict, Any, Optional, Tuple
 import fitz  # PyMuPDF
 
-from .base_parser import EbookParser
+from .base_parser import BookParser
 
 
-class PdfParser(EbookParser):
+class PdfParser(BookParser):
     def parse_metadata(self, file_path: Path) -> Dict[str, Any]:
         metadata_dict = {}
         try:

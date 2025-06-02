@@ -15,11 +15,11 @@ from fastapi import (
 )
 
 from api.v1.schemas.book_schemas import (
-    EbookDisplay,
-    EbookUpdate,
-    PaginatedEbookResponse,
+    BookDisplay,
+    BookUpdate,
+    PaginatedBookResponse,
 )
-from services.book_service import EbookService, get_ebook_service
+from services.book_service import Bookservice, get_book_service
 
 router = APIRouter()
 
@@ -29,32 +29,32 @@ def get_base_url(request: Request) -> str:
     return str(request.base_url)
 
 
-def construct_ebook_display(db_ebook_data: dict, request: Request) -> EbookDisplay:
+def construct_book_display(db_book_data: dict, request: Request) -> BookDisplay:
     base_url = get_base_url(request)
-    ebook_data = db_ebook_data.copy()  # Avoid modifying the original dict
+    book_data = db_book_data.copy()  # Avoid modifying the original dict
 
-    if ebook_data.get("cover_image_filename"):
-        ebook_data["cover_image_url"] = (
-            f"{base_url}api/v1/ebooks/{ebook_data['_id']}/cover"
+    if book_data.get("cover_image_filename"):
+        book_data["cover_image_url"] = (
+            f"{base_url}api/v1/books/{book_data['_id']}/cover"
         )
     else:
-        ebook_data["cover_image_url"] = None
+        book_data["cover_image_url"] = None
 
-    ebook_data["ebook_download_url"] = (
-        f"{base_url}api/v1/ebooks/{ebook_data['_id']}/download"
+    book_data["book_download_url"] = (
+        f"{base_url}api/v1/books/{book_data['_id']}/download"
     )
-    return EbookDisplay.model_validate(ebook_data)  # Use model_validate for Pydantic v2
+    return BookDisplay.model_validate(book_data)  # Use model_validate for Pydantic v2
 
 
-async def process_ebook_upload_task(
+async def process_book_upload_task(
     file_path: Path,
     original_filename: str,
-    ebook_service: EbookService,  # This would need careful handling with Celery context
+    book_service: Bookservice,  # This would need careful handling with Celery context
 ):
     # This function would be the target of a Celery task
     # It needs to be self-contained or able to initialize its dependencies
     # For simplicity, we'll call the service method directly in the background task for now
-    # If using Celery, ebook_service would not be passed directly.
+    # If using Celery, book_service would not be passed directly.
     # You'd get a new instance within the Celery task.
     print(f"Background task: Processing {original_filename} from {file_path}")
 
@@ -63,7 +63,7 @@ async def process_ebook_upload_task(
         # For FastAPI BackgroundTasks, the dependency injection might carry over,
         # but be mindful of database session scope if using transactional DBs.
         # Motor (MongoDB) is generally fine with this.
-        await ebook_service.process_and_save_ebook(file_path, original_filename)
+        await book_service.process_and_save_book(file_path, original_filename)
         print(f"Background task: Successfully processed {original_filename}")
     except Exception as e:
         print(f"Background task: Error processing {original_filename}: {e}")
@@ -73,15 +73,15 @@ async def process_ebook_upload_task(
             file_path.unlink()
 
 
-@router.post("/", response_model=EbookDisplay, status_code=201)  # Or 202 if async
-async def upload_ebook(
+@router.post("/", response_model=BookDisplay, status_code=201)  # Or 202 if async
+async def upload_book(
     request: Request,
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    ebook_service: EbookService = Depends(get_ebook_service),
+    book_service: Bookservice = Depends(get_book_service),
 ):
     """
-    Uploads an e-book, processes it (metadata, cover), and stores it.
+    Uploads an book, processes it (metadata, cover), and stores it.
     Processing is done in the background.
     """
     if not file.filename:
@@ -109,15 +109,15 @@ async def upload_ebook(
     # For now, trigger background task and return a "processing" response placeholder
     # A more robust solution would involve a task ID and status polling.
     background_tasks.add_task(
-        process_ebook_upload_task, temp_file_path, file.filename, ebook_service
+        process_book_upload_task, temp_file_path, file.filename, book_service
     )
 
     # This response is a placeholder. For true async, you'd return a 202 Accepted
     # with a task ID or a link to check status.
     # For this example, we'll simulate a successful immediate creation for the response model.
-    # In a real async setup, you might not have the `created_ebook` immediately.
+    # In a real async setup, you might not have the `created_book` immediately.
     # You could return a message like:
-    # return {"message": "E-book upload accepted for processing.", "filename": file.filename}
+    # return {"message": "Book upload accepted for processing.", "filename": file.filename}
 
     # SIMULATED immediate response for the sake of the response_model.
     # In a real async scenario, this data wouldn't be available yet.
@@ -131,102 +131,100 @@ async def upload_ebook(
         "upload_timestamp": datetime.utcnow(),
         "last_modified_timestamp": datetime.utcnow(),
         "cover_image_url": None,  # Will be populated after processing
-        "ebook_download_url": f"{get_base_url(request)}api/v1/ebooks/{placeholder_id}/download",  # Tentative
+        "book_download_url": f"{get_base_url(request)}api/v1/books/{placeholder_id}/download",  # Tentative
     }
-    # return EbookDisplay.model_validate(placeholder_data) # Pydantic V2
+    # return BookDisplay.model_validate(placeholder_data) # Pydantic V2
     return {
-        "message": "E-book upload accepted for background processing.",
+        "message": "Book upload accepted for background processing.",
         "filename": file.filename,
         "temp_path": str(temp_file_path),
     }
     # If using Celery:
-    # task = process_ebook_upload_task_celery.delay(str(temp_file_path), file.filename)
-    # return {"message": "E-book upload accepted for processing.", "task_id": task.id}
+    # task = process_book_upload_task_celery.delay(str(temp_file_path), file.filename)
+    # return {"message": "Book upload accepted for processing.", "task_id": task.id}
 
 
-@router.get("/", response_model=PaginatedEbookResponse)
-async def list_ebooks(
+@router.get("/", response_model=PaginatedBookResponse)
+async def list_books(
     request: Request,
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),
     search_query: Optional[str] = Query(None, alias="q"),
-    ebook_service: EbookService = Depends(get_ebook_service),
+    book_service: Bookservice = Depends(get_book_service),
 ):
     """
     Lists books with pagination and optional search.
     """
-    ebooks_data, total_items = await ebook_service.get_multiple_ebooks(
+    books_data, total_items = await book_service.get_multiple_books(
         skip=skip, limit=limit, search_query=search_query
     )
 
-    displayed_ebooks = [
-        construct_ebook_display(ebook, request) for ebook in ebooks_data
-    ]
+    displayed_books = [construct_book_display(book, request) for book in books_data]
 
     total_pages = (total_items + limit - 1) // limit
-    return PaginatedEbookResponse(
+    return PaginatedBookResponse(
         total_items=total_items,
         total_pages=total_pages,
         current_page=(skip // limit) + 1,
         items_per_page=limit,
-        items=displayed_ebooks,
+        items=displayed_books,
     )
 
 
-@router.get("/{ebook_id}", response_model=EbookDisplay)
-async def get_ebook_details(
-    ebook_id: str,
+@router.get("/{book_id}", response_model=BookDisplay)
+async def get_book_details(
+    book_id: str,
     request: Request,
-    ebook_service: EbookService = Depends(get_ebook_service),
+    book_service: Bookservice = Depends(get_book_service),
 ):
     """
-    Retrieves metadata for a specific e-book.
+    Retrieves metadata for a specific book.
     """
-    ebook = await ebook_service.get_ebook_by_id(ebook_id)
-    if not ebook:
-        raise HTTPException(status_code=404, detail="E-book not found")
-    return construct_ebook_display(ebook, request)
+    book = await book_service.get_book_by_id(book_id)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    return construct_book_display(book, request)
 
 
-@router.put("/{ebook_id}", response_model=EbookDisplay)
-async def update_ebook_metadata(
-    ebook_id: str,
-    ebook_update_data: EbookUpdate,
+@router.put("/{book_id}", response_model=BookDisplay)
+async def update_book_metadata(
+    book_id: str,
+    book_update_data: BookUpdate,
     request: Request,
-    ebook_service: EbookService = Depends(get_ebook_service),
+    book_service: Bookservice = Depends(get_book_service),
 ):
     """
-    Updates metadata for a specific e-book.
+    Updates metadata for a specific book.
     """
-    updated_ebook = await ebook_service.update_ebook(ebook_id, ebook_update_data)
-    if not updated_ebook:
-        raise HTTPException(status_code=404, detail="E-book not found or update failed")
-    return construct_ebook_display(updated_ebook, request)
+    updated_book = await book_service.update_book(book_id, book_update_data)
+    if not updated_book:
+        raise HTTPException(status_code=404, detail="Book not found or update failed")
+    return construct_book_display(updated_book, request)
 
 
-@router.delete("/{ebook_id}", status_code=204)
-async def delete_ebook(
-    ebook_id: str, ebook_service: EbookService = Depends(get_ebook_service)
+@router.delete("/{book_id}", status_code=204)
+async def delete_book(
+    book_id: str, book_service: Bookservice = Depends(get_book_service)
 ):
     """
-    Deletes an e-book (metadata and associated files).
+    Deletes an book (metadata and associated files).
     """
-    deleted_count = await ebook_service.delete_ebook_by_id(ebook_id)
+    deleted_count = await book_service.delete_book_by_id(book_id)
     if not deleted_count:
         raise HTTPException(
-            status_code=404, detail="E-book not found or could not be deleted"
+            status_code=404, detail="Book not found or could not be deleted"
         )
     return None  # FastAPI handles 204 No Content response
 
 
-@router.get("/{ebook_id}/cover")
-async def get_ebook_cover(
-    ebook_id: str, ebook_service: EbookService = Depends(get_ebook_service)
+@router.get("/{book_id}/cover")
+async def get_book_cover(
+    book_id: str, book_service: Bookservice = Depends(get_book_service)
 ):
     """
-    Retrieves the cover image for an e-book.
+    Retrieves the cover image for an book.
     """
-    cover_path, media_type = await ebook_service.get_ebook_cover_path(ebook_id)
+    cover_path, media_type = await book_service.get_book_cover_path(book_id)
     if not cover_path or not cover_path.exists():
         raise HTTPException(status_code=404, detail="Cover image not found")
     # Using FileResponse for efficient streaming
@@ -235,20 +233,20 @@ async def get_ebook_cover(
     return FileResponse(cover_path, media_type=media_type)  # e.g., "image/jpeg"
 
 
-@router.get("/{ebook_id}/download")
-async def download_ebook_file(
-    ebook_id: str, ebook_service: EbookService = Depends(get_ebook_service)
+@router.get("/{book_id}/download")
+async def download_book_file(
+    book_id: str, book_service: Bookservice = Depends(get_book_service)
 ):
     """
-    Downloads the original e-book file.
+    Downloads the original book file.
     """
     (
         file_path,
         original_filename,
         media_type,
-    ) = await ebook_service.get_ebook_file_path_and_details(ebook_id)
+    ) = await book_service.get_book_file_path_and_details(book_id)
     if not file_path or not file_path.exists():
-        raise HTTPException(status_code=404, detail="E-book file not found")
+        raise HTTPException(status_code=404, detail="Book file not found")
 
     from fastapi.responses import FileResponse
 

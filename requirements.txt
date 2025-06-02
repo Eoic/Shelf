@@ -3,7 +3,7 @@ uvicorn[standard]
 pydantic
 python-multipart
 motor 
-ebooklib
+booklib
 pymupdf
 celery
 redis

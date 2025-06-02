@@ -38,7 +38,7 @@ class IdentifierSchema(BaseModel):
 
 
 # Base model for common fields
-class EbookBase(BaseModel):
+class BookBase(BaseModel):
     title: Optional[str] = None
     authors: Optional[List[AuthorSchema]] = None
     publisher: Optional[str] = None
@@ -55,28 +55,28 @@ class EbookBase(BaseModel):
     format: Optional[str] = None
 
 
-# Schema for creating an e-book (metadata might be extracted from file)
-class EbookCreate(EbookBase):
+# Schema for creating an book (metadata might be extracted from file)
+class BookCreate(BookBase):
     # Typically, most fields will be extracted during parsing,
     # but you might allow some overrides via API on upload.
     pass
 
 
-# Schema for updating an e-book
-class EbookUpdate(EbookBase):
+# Schema for updating an book
+class BookUpdate(BookBase):
     # All fields are optional for PATCH-like updates
     pass
 
 
-# Schema for displaying e-book metadata
-class EbookDisplay(EbookBase):
+# Schema for displaying book metadata
+class BookDisplay(BookBase):
     id: PyObjectId = Field(alias="_id")  # For MongoDB's default _id
     # internal_id: uuid.UUID # If you use a separate UUID
     file_size_bytes: Optional[int] = None
     md5_hash: Optional[str] = None
     original_filename: Optional[str] = None
     cover_image_url: Optional[HttpUrl] = None  # Constructed URL
-    ebook_download_url: Optional[HttpUrl] = None  # Constructed URL
+    book_download_url: Optional[HttpUrl] = None  # Constructed URL
     upload_timestamp: datetime
     last_modified_timestamp: datetime
 
@@ -87,15 +87,15 @@ class EbookDisplay(EbookBase):
         from_attributes = True
 
 
-class EbookInDB(EbookDisplay):  # For data directly from DB before constructing URLs
+class BookInDB(BookDisplay):  # For data directly from DB before constructing URLs
     cover_image_filename: Optional[str] = None
     # No URLs here, just the raw data
     pass
 
 
-class PaginatedEbookResponse(BaseModel):
+class PaginatedBookResponse(BaseModel):
     total_items: int
     total_pages: int
     current_page: int
     items_per_page: int
-    items: List[EbookDisplay]
+    items: List[BookDisplay]

@@ -3,10 +3,10 @@ from pathlib import Path
 from typing import Dict, Any, Optional, Tuple
 
 
-class EbookParser(ABC):
+class BookParser(ABC):
     @abstractmethod
     def parse_metadata(self, file_path: Path) -> Dict[str, Any]:
-        """Extracts core metadata from the e-book file."""
+        """Extracts core metadata from the book file."""
         pass
 
     @abstractmethod

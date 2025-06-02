@@ -6,14 +6,14 @@ requires = ["setuptools>=61.0", "wheel"]
 [project]
 name = "shelf"
 version = "0.1.0"
-description = "A FastAPI application for uploading, processing, and managing e-book files."
+description = "A FastAPI application for uploading, processing, and managing book files."
 readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}
 authors = [
     {name = "Karolis Strazdas", email = "karolis.strazdas@protonmail.com"},
 ]
-keywords = ["ebook", "parser", "fastapi", "api", "metadata", "digital-library"]
+keywords = ["book", "parser", "fastapi", "api", "metadata", "digital-library"]
 
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -39,7 +39,7 @@ dependencies = [
     "pydantic-settings",
     "python-multipart",
     "motor>=3.0",
-    "ebooklib>=0.18",
+    "booklib>=0.18",
     "pymupdf",
     "celery>=5.0",
     "redis>=4.0",

@@ -4,10 +4,10 @@ import ebooklib
 from ebooklib import epub
 from bs4 import BeautifulSoup  # For parsing HTML in description
 
-from .base_parser import EbookParser
+from .base_parser import BookParser
 
 
-class EpubParser(EbookParser):
+class EpubParser(BookParser):
     def parse_metadata(self, file_path: Path) -> Dict[str, Any]:
         metadata = {}
         try:
@@ -94,7 +94,7 @@ class EpubParser(EbookParser):
 
             # Method 1: Check manifest for item with cover-image property
             for item in book.get_items():
-                if item.get_type() == ebooklib.ITEM_IMAGE:
+                if item.get_type() == booklib.ITEM_IMAGE:
                     if "cover-image" in (item.properties or []):  # EPUB 3
                         cover_item = item
                         break
@@ -119,7 +119,7 @@ class EpubParser(EbookParser):
             if not cover_item:
                 # Look for common cover image names if not explicitly defined
                 common_cover_names = ["cover.jpg", "cover.jpeg", "cover.png"]
-                for item in book.get_items_of_type(ebooklib.ITEM_IMAGE):
+                for item in book.get_items_of_type(booklib.ITEM_IMAGE):
                     if (
                         item.get_name().lower() in common_cover_names
                         or "cover" in item.get_name().lower()

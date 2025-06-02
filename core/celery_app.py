@@ -4,12 +4,12 @@ from .config import settings
 # Only initialize Celery if URLs are configured
 if settings.CELERY_BROKER_URL and settings.CELERY_RESULT_BACKEND:
     celery_app = Celery(
-        "ebook_manager_tasks",
+        "book_manager_tasks",
         broker=settings.CELERY_BROKER_URL,
         backend=settings.CELERY_RESULT_BACKEND,
         include=[
             # Add paths to your task modules here, e.g.:
-            # "services.ebook_tasks"
+            # "services.book_tasks"
         ],
     )
 

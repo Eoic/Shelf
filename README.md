@@ -1,5 +1,5 @@
 # Shelf
-A service for uploading, processing, and managing e-book files.
+A service for uploading, processing, and managing book files.
 
 ## Features
 
@@ -30,11 +30,7 @@ A service for uploading, processing, and managing e-book files.
     ```
 
 4.  **Setup environment variables:**
-    Copy `.env.example` to `.env` and update the values.
-    ```bash
-    cp .env.example .env
-    # Use your preferred editor to modify .env
-    ```
+    Copy `.env.example` to `.env` and update the values as needed.
 
 5.  **Ensure your database is running.**
     Run MongoDB via Docker Compose:
