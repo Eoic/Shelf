@@ -66,6 +66,12 @@ class BookUpdate(BookBase):
     pass
 
 
+class BookUploadQueued(BaseModel):
+    message: str
+    filename: str
+    temp_path: str
+
+
 class BookDisplay(BookBase):
     id: PyObjectId = Field(alias="_id")
     file_size_bytes: Optional[int] = None

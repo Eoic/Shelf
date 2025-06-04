@@ -17,6 +17,7 @@ from fastapi.responses import FileResponse
 from api.v1.schemas.book_schemas import (
     BookDisplay,
     BookUpdate,
+    BookUploadQueued,
     PaginatedBookResponse,
 )
 from core.logger import logger
@@ -64,15 +65,15 @@ async def process_book_upload_task(
             file_path.unlink()
 
 
-@router.post("/", response_model=BookDisplay, status_code=201)
+@router.post("/", response_model=BookUploadQueued, status_code=201)
 async def upload_book(
-    request: Request,
+    _request: Request,
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     book_service: BookService = Depends(get_book_service),
 ):
     """
-    Uploads an book, processes it (metadata, cover), and stores it.
+    Uploads a book, processes it (metadata, cover), and stores it.
     Processing is done in the background.
     """
     if not file.filename:
@@ -93,13 +94,15 @@ async def upload_book(
     finally:
         file.file.close()
 
-    background_tasks.add_task(
-        process_book_upload_task,
-        temp_file_path,
-        file.filename,
-        book_service,
-    )
+    # FIXME: Celery is not set up.
+    # background_tasks.add_task(
+    #     process_book_upload_task,
+    #     temp_file_path,
+    #     file.filename,
+    #     book_service,
+    # )
 
+    # # NOTE: Returns incorrect structure.
     return {
         "message": "Book upload accepted for background processing.",
         "filename": file.filename,
