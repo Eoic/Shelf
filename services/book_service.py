@@ -1,16 +1,15 @@
-from datetime import datetime
 import hashlib
 import io
 import mimetypes
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 import uuid
 
 from fastapi import Depends, HTTPException
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from PIL import Image
 
-from api.v1.schemas.book_schemas import BookCreate, BookInDB, BookUpdate
+from api.v1.schemas.book_schemas import BookInDB, BookUpdate
 from core.config import settings
 from core.logger import logger
 from database import book_crud
@@ -29,7 +28,7 @@ class BookService:
     def __init__(self, db: AsyncIOMotorDatabase = Depends(get_db_session)):
         self.db = db
 
-    async def _get_parser(self, file_path: Path) -> Optional[BookParser]:
+    async def _get_parser(self, file_path: Path) -> BookParser | None:
         file_format = BookParser.get_file_format(file_path)
 
         if not file_format:
@@ -45,9 +44,11 @@ class BookService:
 
     def _generate_file_hash(self, file_path: Path, hash_algo="md5") -> str:
         hasher = hashlib.new(hash_algo)
-        with file_path.open("rb") as f:
-            for chunk in iter(lambda: f.read(4096), b""):
+
+        with file_path.open("rb") as file:
+            for chunk in iter(lambda: file.read(4096), b""):
                 hasher.update(chunk)
+
         return hasher.hexdigest()
 
     async def process_and_save_book(
@@ -78,7 +79,7 @@ class BookService:
 
         if "parsing_error" in extracted_metadata:
             logger.warning(
-                f"Metadata parsing issue for {original_filename}: {extracted_metadata['parsing_error']}"
+                f"Metadata parsing issue for {original_filename}: {extracted_metadata['parsing_error']}",
             )
 
         book_data_to_create: dict[str, Any] = {
@@ -126,61 +127,54 @@ class BookService:
             f"{stored_filename_stem}{stored_file_ext}"  # Store relative name
         )
 
-        # 6. Extract, Process, and Store Cover Image
-        cover_data_tuple = parser.extract_cover_image_data(
-            stored_file_path
-        )  # Parse from stored location
         cover_filename = None
+        cover_data_tuple = parser.extract_cover_image_data(stored_file_path)
+
         if cover_data_tuple:
             image_bytes, original_mimetype = cover_data_tuple
+
             try:
                 img = Image.open(io.BytesIO(image_bytes))
-                # Standardize to JPEG, create thumbnail
-                # Main cover
                 cover_filename_main = f"{stored_filename_stem}_cover.jpg"
                 cover_path_main = settings.COVER_FILES_DIR / cover_filename_main
                 img.convert("RGB").save(cover_path_main, "JPEG", quality=85)
                 cover_filename = cover_filename_main  # Store this in DB
 
-                # Thumbnail (example)
-                # thumb_filename = f"{stored_filename_stem}_thumb.jpg"
-                # thumb_path = settings.COVER_FILES_DIR / thumb_filename
-                # img.thumbnail((150, 200)) # Resize in place
-                # img.convert("RGB").save(thumb_path, "JPEG", quality=80)
+                thumb_filename = f"{stored_filename_stem}_thumb.jpg"
+                thumb_path = settings.COVER_FILES_DIR / thumb_filename
+                img.thumbnail((150, 200))
+                img.convert("RGB").save(thumb_path, "JPEG", quality=80)
             except Exception as e:
                 logger.error(
-                    f"Could not process/save cover for {original_filename}: {e}"
+                    f"Could not process/save cover for {original_filename}: {e}",
                 )
-                # Cover saving failed, but proceed without it
 
         if cover_filename:
             book_data_to_create["cover_image_filename"] = cover_filename
 
-        # 7. Save Metadata to Database
         created_db_book = await book_crud.create_book_metadata(
-            self.db, book_data_to_create
+            self.db,
+            book_data_to_create,
         )
-
-        # Update the stored_filename and cover_filename if you want to rename them using the DB ID
-        # db_id = str(created_db_book['_id'])
-        # new_stored_filename = f"{db_id}{stored_file_ext}"
-        # new_cover_filename = f"{db_id}_cover.jpg" if cover_filename else None
-        # TODO: Add logic to rename files using created_db_book['_id'] if desired and update DB record
 
         return BookInDB.model_validate(created_db_book)
 
     async def get_multiple_books(
-        self, skip: int, limit: int, search_query: Optional[str]
-    ) -> Tuple[List[Dict[str, Any]], int]:
+        self,
+        skip: int,
+        limit: int,
+        search_query: str | None,
+    ) -> tuple[list[dict[str, Any]], int]:
         return await book_crud.get_all_books(self.db, skip, limit, search_query)
 
-    async def get_book_by_id(self, book_id: str) -> Optional[Dict[str, Any]]:
+    async def get_book_by_id(self, book_id: str) -> dict[str, Any] | None:
         return await book_crud.get_book_by_id(self.db, book_id)
 
     async def update_book(
-        self, book_id: str, book_update_data: BookUpdate
-    ) -> Optional[Dict[str, Any]]:
-        # TODO: Add logic if cover image needs to be re-processed or files changed
+        self,
+        book_id: str,
+        book_update_data: BookUpdate,
+    ) -> dict[str, Any] | None:
         return await book_crud.update_book_metadata(self.db, book_id, book_update_data)
 
     async def delete_book_by_id(self, book_id: str) -> int:
@@ -188,9 +182,9 @@ class BookService:
         if not book_to_delete:
             return 0
 
-        # Delete files from storage
         if book_to_delete.get("stored_filename"):
             file_to_delete = settings.BOOK_FILES_DIR / book_to_delete["stored_filename"]
+
             if file_to_delete.exists():
                 file_to_delete.unlink()
 
@@ -198,32 +192,36 @@ class BookService:
             cover_to_delete = (
                 settings.COVER_FILES_DIR / book_to_delete["cover_image_filename"]
             )
+
             if cover_to_delete.exists():
                 cover_to_delete.unlink()
-            # Also delete thumbnail if you have one
 
         return await book_crud.delete_book_metadata(self.db, book_id)
 
-    async def get_book_cover_path(
-        self, book_id: str
-    ) -> Tuple[Optional[Path], Optional[str]]:
+    async def get_book_cover_path(self, book_id: str) -> tuple[Path | None, str | None]:
         book = await self.get_book_by_id(book_id)
+
         if book and book.get("cover_image_filename"):
             cover_path = settings.COVER_FILES_DIR / book["cover_image_filename"]
+
             if cover_path.exists():
                 media_type, _ = mimetypes.guess_type(cover_path)
-                return cover_path, media_type or "image/jpeg"  # Default mimetype
+                return cover_path, media_type or "image/jpeg"
+
         return None, None
 
     async def get_book_file_path_and_details(
-        self, book_id: str
-    ) -> Tuple[Optional[Path], Optional[str], Optional[str]]:
+        self,
+        book_id: str,
+    ) -> tuple[Path | None, str | None, str | None]:
         book = await self.get_book_by_id(book_id)
+
         if book and book.get("stored_filename"):
             file_path = settings.BOOK_FILES_DIR / book["stored_filename"]
+
             if file_path.exists():
                 media_type, _ = mimetypes.guess_type(file_path)
-                # Common book mimetypes
+
                 if book.get("format") == "EPUB":
                     media_type = media_type or "application/epub+zip"
                 elif book.get("format") == "PDF":
@@ -236,6 +234,7 @@ class BookService:
                     book.get("original_filename", "book_file"),
                     media_type,
                 )
+
         return None, None, None
 
 

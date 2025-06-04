@@ -178,3 +178,5 @@ storage/book_files/*
 storage/covers/*
 !storage/book_files/.gitkeep
 !storage/covers/.gitkeep
+temp/*
+!temp/.gitkeep

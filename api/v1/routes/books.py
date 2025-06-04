@@ -1,4 +1,3 @@
-from datetime import datetime, timezone
 from pathlib import Path
 import shutil
 from typing import Optional
@@ -79,7 +78,7 @@ async def upload_book(
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided.")
 
-    temp_dir = Path("temp_uploads")
+    temp_dir = Path("temp")
     temp_dir.mkdir(parents=True, exist_ok=True)
     temp_file_path = temp_dir / f"{file.filename}"
 
@@ -101,29 +100,11 @@ async def upload_book(
         book_service,
     )
 
-    # placeholder_id = "605c72ef98dab1a8d2f00000"
-
-    # placeholder_data = {
-    #     "_id": placeholder_id,
-    #     "title": f"Processing: {file.filename}",
-    #     "original_filename": file.filename,
-    #     "upload_timestamp": datetime.now(timezone.utc),
-    #     "last_modified_timestamp": datetime.now(timezone.utc),
-    #     "cover_image_url": None,
-    #     "book_download_url": f"{get_base_url(request)}api/v1/books/{placeholder_id}/download",  # Tentative
-    # }
-
-    # return BookDisplay.model_validate(placeholder_data)
-
     return {
         "message": "Book upload accepted for background processing.",
         "filename": file.filename,
         "temp_path": str(temp_file_path),
     }
-
-    # Celery:
-    # task = process_book_upload_task_celery.delay(str(temp_file_path), file.filename)
-    # return {"message": "Book upload accepted for processing.", "task_id": task.id}
 
 
 @router.get("/", response_model=PaginatedBookResponse)
@@ -211,7 +192,8 @@ async def delete_book(
 
 @router.get("/{book_id}/cover")
 async def get_book_cover(
-    book_id: str, book_service: BookService = Depends(get_book_service)
+    book_id: str,
+    book_service: BookService = Depends(get_book_service),
 ):
     """
     Retrieves the cover image for an book.
@@ -226,7 +208,8 @@ async def get_book_cover(
 
 @router.get("/{book_id}/download")
 async def download_book_file(
-    book_id: str, book_service: BookService = Depends(get_book_service)
+    book_id: str,
+    book_service: BookService = Depends(get_book_service),
 ):
     """
     Downloads the original book file.
