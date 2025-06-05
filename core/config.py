@@ -1,14 +1,13 @@
-import os
 from pathlib import Path
 
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "Book Manager API"
+    PROJECT_NAME: str = "Shelf API"
     PROJECT_VERSION: str = "0.1.0"
 
-    MONGO_DATABASE_URL: str = "mongodb://127.0.0.1:27017"
+    MONGO_DATABASE_URL: str
     MONGO_DATABASE_NAME: str = "shelf"
 
     BOOK_FILES_DIR: Path = Path("./storage/books")
@@ -24,6 +23,5 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-
 settings.BOOK_FILES_DIR.mkdir(parents=True, exist_ok=True)
 settings.COVER_FILES_DIR.mkdir(parents=True, exist_ok=True)

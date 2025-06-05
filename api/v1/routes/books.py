@@ -115,7 +115,7 @@ async def list_books(
     request: Request,
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),
-    search_query: Optional[str] = Query(None, alias="q"),
+    search_query: str | None = Query(None, alias="q"),
     book_service: BookService = Depends(get_book_service),
 ):
     """
