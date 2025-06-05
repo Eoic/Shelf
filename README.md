@@ -47,6 +47,22 @@ uvicorn main:app --reload
 The API will be available at http://127.0.0.1:8000.
 Interactive API documentation (Swagger UI) will be at http://127.0.0.1:8000/docs and an alternative documentation (ReDoc) is available at http://127.0.0.1:8000/redoc.
 
+## Running Celery Worker
+
+To process background tasks (such as book uploads and metadata extraction), you need to run a Celery worker. Make sure your Redis and MongoDB services are running and your environment variables are set (see `.env.example`).
+
+### Start Celery worker (locally):
+
+```bash
+celery -A core.celery_app.celery_app worker --loglevel=info
+```
+
+- If you want to specify a queue:
+
+```bash
+celery -A core.celery_app.celery_app worker --loglevel=info -Q default
+```
+
 ## TODO
 - [ ] Implement MOBI/AZW3 parsing (potentially with Calibre CLI tools).
 - [ ] More robust error handling and logging.

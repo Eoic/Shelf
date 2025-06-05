@@ -55,7 +55,7 @@ class PdfParser(BookParser):
 
             if doc.page_count > 0:
                 page = doc.load_page(0)
-                pix = page.get_pixmap(dpi=150, alpha=False)
+                pix = page.get_pixmap(dpi=150, alpha=False)  # type: ignore
                 img_bytes = pix.tobytes("png")
                 doc.close()
 

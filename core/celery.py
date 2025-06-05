@@ -4,10 +4,9 @@ from .config import settings
 
 if settings.CELERY_BROKER_URL and settings.CELERY_RESULT_BACKEND:
     celery_app = Celery(
-        "book_manager_tasks",
+        "shelf_tasks",
         broker=settings.CELERY_BROKER_URL,
         backend=settings.CELERY_RESULT_BACKEND,
-        include=["services.book_tasks"],
     )
 
     celery_app.conf.update(
@@ -17,11 +16,10 @@ if settings.CELERY_BROKER_URL and settings.CELERY_RESULT_BACKEND:
         timezone="UTC",
         enable_utc=True,
         worker_concurrency=4,
-        task_routes={"tasks.add": "low-priority"},
+        task_routes={"tasks.add": {"queue": "default"}},
+        task_default_queue="default",
+        task_default_exchange="default",
+        task_default_routing_key="default",
     )
 else:
     celery_app = None
-
-# NOTE:
-# Run Celery worker with:
-# celery -A core.celery_app worker -l info
