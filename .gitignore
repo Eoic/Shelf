@@ -174,9 +174,9 @@ cython_debug/
 .pypirc
 
 # Uploads.
-storage/book_files/*
+storage/books/*
 storage/covers/*
-!storage/book_files/.gitkeep
+!storage/books/.gitkeep
 !storage/covers/.gitkeep
 temp/*
 !temp/.gitkeep

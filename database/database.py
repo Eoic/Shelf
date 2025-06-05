@@ -10,9 +10,9 @@ db: AsyncIOMotorDatabase | None = None
 async def connect_to_mongo():
     global client, db
 
-    logger.info(f"Connecting to MongoDB at {settings.MONGO_DATABASE_URL}...")
-    client = AsyncIOMotorClient(settings.MONGO_DATABASE_URL)
-    db = client[settings.MONGO_DATABASE_NAME]
+    logger.info(f"Connecting to MongoDB at {settings.MONGODB_URL}...")
+    client = AsyncIOMotorClient(settings.MONGODB_URL)
+    db = client[settings.MONGODB_DATABASE]
 
     try:
         await client.admin.command("ismaster")

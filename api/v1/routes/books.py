@@ -95,12 +95,12 @@ async def upload_book(
         file.file.close()
 
     # FIXME: Celery is not set up.
-    # background_tasks.add_task(
-    #     process_book_upload_task,
-    #     temp_file_path,
-    #     file.filename,
-    #     book_service,
-    # )
+    background_tasks.add_task(
+        process_book_upload_task,
+        temp_file_path,
+        file.filename,
+        book_service,
+    )
 
     # # NOTE: Returns incorrect structure.
     return {

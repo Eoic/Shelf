@@ -7,8 +7,8 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Shelf API"
     PROJECT_VERSION: str = "0.1.0"
 
-    MONGO_DATABASE_URL: str
-    MONGO_DATABASE_NAME: str = "shelf"
+    MONGODB_URL: str = "mongodb://localhost:27017"
+    MONGODB_DATABASE: str = "shelf"
 
     BOOK_FILES_DIR: Path = Path("./storage/books")
     COVER_FILES_DIR: Path = Path("./storage/covers")
