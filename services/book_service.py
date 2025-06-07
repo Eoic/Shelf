@@ -6,14 +6,14 @@ from typing import Any
 import uuid
 
 from fastapi import Depends, HTTPException
-from motor.motor_asyncio import AsyncIOMotorDatabase
 from PIL import Image
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.v1.schemas.book_schemas import BookInDB, BookUpdate
 from core.config import settings
 from core.logger import logger
 from database import book_crud
-from database.database import get_db_session
+from database.db import get_db
 from parsers.base_parser import BookParser
 from parsers.epub_parser import EpubParser
 from parsers.pdf_parser import PdfParser
@@ -25,7 +25,7 @@ PARSER_MAPPING = {
 
 
 class BookService:
-    def __init__(self, db: AsyncIOMotorDatabase = Depends(get_db_session)):
+    def __init__(self, db: AsyncSession = Depends(get_db)):
         self.db = db
 
     async def _get_parser(self, file_path: Path) -> BookParser | None:
@@ -51,8 +51,10 @@ class BookService:
 
         return hasher.hexdigest()
 
-    async def process_and_save_book(
-        self, file_path: Path, original_filename: str
+    async def process_and_save_book(  # noqa: C901
+        self,
+        file_path: Path,
+        original_filename: str,
     ) -> BookInDB:
         file_hash = self._generate_file_hash(file_path)
         existing_book = await book_crud.get_book_by_hash(self.db, file_hash)
@@ -165,20 +167,32 @@ class BookService:
         limit: int,
         search_query: str | None,
     ) -> tuple[list[dict[str, Any]], int]:
-        return await book_crud.get_all_books(self.db, skip, limit, search_query)
+        books, count = await book_crud.get_all_books(self.db, skip, limit, search_query)
 
-    async def get_book_by_id(self, book_id: str) -> dict[str, Any] | None:
-        return await book_crud.get_book_by_id(self.db, book_id)
+        return [
+            BookInDB.model_validate(book.__dict__).model_dump() for book in books
+        ], int(
+            count or 0,
+        )
+
+    async def get_book_by_id(self, book_id: int):
+        book = await book_crud.get_book_by_id(self.db, book_id)
+
+        if not book:
+            raise HTTPException(status_code=404, detail="Book not found")
+
+        return BookInDB.model_validate(book.__dict__)
 
     async def update_book(
         self,
-        book_id: str,
+        book_id: int,
         book_update_data: BookUpdate,
     ) -> dict[str, Any] | None:
         return await book_crud.update_book_metadata(self.db, book_id, book_update_data)
 
-    async def delete_book_by_id(self, book_id: str) -> int:
+    async def delete_book_by_id(self, book_id: int) -> int:
         book_to_delete = await book_crud.get_book_by_id(self.db, book_id)
+
         if not book_to_delete:
             return 0
 
@@ -198,11 +212,11 @@ class BookService:
 
         return await book_crud.delete_book_metadata(self.db, book_id)
 
-    async def get_book_cover_path(self, book_id: str) -> tuple[Path | None, str | None]:
+    async def get_book_cover_path(self, book_id: int) -> tuple[Path | None, str | None]:
         book = await self.get_book_by_id(book_id)
 
-        if book and book.get("cover_image_filename"):
-            cover_path = settings.COVER_FILES_DIR / book["cover_image_filename"]
+        if book and book.cover_image_filename:
+            cover_path = settings.COVER_FILES_DIR / book.cover_image_filename
 
             if cover_path.exists():
                 media_type, _ = mimetypes.guess_type(cover_path)
@@ -212,26 +226,26 @@ class BookService:
 
     async def get_book_file_path_and_details(
         self,
-        book_id: str,
+        book_id: int,
     ) -> tuple[Path | None, str | None, str | None]:
         book = await self.get_book_by_id(book_id)
 
-        if book and book.get("stored_filename"):
-            file_path = settings.BOOK_FILES_DIR / book["stored_filename"]
+        if book and book.original_filename and book.format:
+            file_path = settings.BOOK_FILES_DIR / book.original_filename
 
             if file_path.exists():
                 media_type, _ = mimetypes.guess_type(file_path)
 
-                if book.get("format") == "EPUB":
+                if book.format == "EPUB":
                     media_type = media_type or "application/epub+zip"
-                elif book.get("format") == "PDF":
+                elif book.format == "PDF":
                     media_type = media_type or "application/pdf"
-                elif book.get("format", "").startswith("MOBI"):
+                elif book.format.startswith("MOBI"):
                     media_type = media_type or "application/x-mobipocket-book"
 
                 return (
                     file_path,
-                    book.get("original_filename", "book_file"),
+                    book.original_filename or "book_file",
                     media_type,
                 )
 
@@ -239,6 +253,6 @@ class BookService:
 
 
 def get_book_service(
-    db: AsyncIOMotorDatabase = Depends(get_db_session),
+    db: AsyncSession = Depends(get_db),
 ) -> BookService:
     return BookService(db)

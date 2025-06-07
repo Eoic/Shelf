@@ -2,9 +2,6 @@ fastapi
 uvicorn[standard]
 pydantic
 python-multipart
-motor 
-booklib
-pymupdf
 celery
 redis
 python-dotenv
@@ -14,3 +11,7 @@ pytest
 httpx
 bs4
 Pillow
+asyncpg
+sqlalchemy[asyncio]
+databases
+alembic

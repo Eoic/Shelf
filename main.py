@@ -5,21 +5,17 @@ from fastapi import FastAPI
 
 from api.v1.routes import books as books_v1_router
 from core.config import settings
-from database.database import close_mongo_connection, connect_to_mongo
 
 load_dotenv()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await connect_to_mongo()
     from pathlib import Path
 
     Path(settings.BOOK_FILES_DIR).mkdir(parents=True, exist_ok=True)
     Path(settings.COVER_FILES_DIR).mkdir(parents=True, exist_ok=True)
     yield
-
-    await close_mongo_connection()
 
 
 app = FastAPI(

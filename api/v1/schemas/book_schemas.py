@@ -1,35 +1,7 @@
 from datetime import datetime
-from typing import ClassVar, Optional
+from typing import Optional
 
-from bson import ObjectId
-from pydantic import BaseModel, Field, HttpUrl
-from pydantic.json_schema import JsonSchemaValue
-from pydantic_core import core_schema
-
-
-class InvalidObjectIdError(ValueError):
-    """Raised when an invalid ObjectId is encountered."""
-
-
-class PyObjectId(ObjectId):
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
-
-    @classmethod
-    def validate(cls, v, _: core_schema.ValidationInfo):
-        if not ObjectId.is_valid(v):
-            raise InvalidObjectIdError()
-
-        return ObjectId(v)
-
-    @classmethod
-    def __get_pydantic_json_schema__(
-        cls,
-        core_schema: core_schema.CoreSchema,
-        handler: JsonSchemaValue,
-    ) -> JsonSchemaValue:
-        return {"type": "string"}
+from pydantic import BaseModel, HttpUrl
 
 
 class AuthorSchema(BaseModel):
@@ -73,9 +45,10 @@ class BookUploadQueued(BaseModel):
 
 
 class BookDisplay(BookBase):
-    id: PyObjectId = Field(alias="_id")
+    id: int
     file_size_bytes: Optional[int] = None
     md5_hash: Optional[str] = None
+    file_path: Optional[str] = None
     original_filename: Optional[str] = None
     cover_image_url: Optional[HttpUrl] = None
     book_download_url: Optional[HttpUrl] = None
@@ -84,7 +57,6 @@ class BookDisplay(BookBase):
 
     class Config:
         populate_by_name = True
-        json_encoders: ClassVar[dict] = {ObjectId: str}
         from_attributes = True
 
 
@@ -93,8 +65,5 @@ class BookInDB(BookDisplay):
 
 
 class PaginatedBookResponse(BaseModel):
-    total_items: int
-    total_pages: int
-    current_page: int
-    items_per_page: int
+    total: int
     items: list[BookDisplay]

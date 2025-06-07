@@ -6,7 +6,7 @@ A service for uploading, processing, and managing book files.
 - REST API for book management.
 - Book metadata parsing (PDF, EPUB, MOBI) and management.
 - Cover image extraction and storage.
-- Metadata storage in a document-oriented database (MongoDB).
+- Metadata storage in a relational database (PostgreSQL).
 - File and cover storage in the local file system.
 - Asynchronous processing for book uploads (Celery).
 
@@ -33,7 +33,7 @@ A service for uploading, processing, and managing book files.
     Copy `.env.example` to `.env` and update the values as needed.
 
 5.  **Ensure your database is running.**
-    Run MongoDB via Docker Compose:
+    Run PostgreSQL via Docker Compose:
     ```bash
     docker compose up
     ```
@@ -49,7 +49,7 @@ Interactive API documentation (Swagger UI) will be at http://127.0.0.1:8000/docs
 
 ## Running Celery Worker
 
-To process background tasks (such as book uploads and metadata extraction), you need to run a Celery worker. Make sure your Redis and MongoDB services are running and your environment variables are set (see `.env.example`).
+To process background tasks (such as book uploads and metadata extraction), you need to run a Celery worker. Make sure your Redis and PostgreSQL services are running and your environment variables are set (see `.env.example`).
 
 ### Start Celery worker (locally):
 
@@ -62,6 +62,28 @@ celery -A core.celery_app.celery_app worker --loglevel=info
 ```bash
 celery -A core.celery_app.celery_app worker --loglevel=info -Q default
 ```
+
+## Database & Migrations
+
+This project uses **PostgreSQL** as the main database via SQLAlchemy (async) and Alembic for migrations.
+
+- Ensure PostgreSQL is running (see Docker Compose instructions above).
+- Database connection settings are configured via environment variables in `.env` (see `.env.example`).
+- To create or update the database schema, use Alembic migrations:
+
+### Creating a new migration after model changes
+
+```bash
+alembic revision --autogenerate -m "Describe your change"
+```
+
+### Applying migrations to the database
+
+```bash
+alembic upgrade head
+```
+
+- Alembic configuration is in `alembic.ini` and migration scripts are in the `alembic/versions/` directory.
 
 ## TODO
 - [ ] Implement MOBI/AZW3 parsing (potentially with Calibre CLI tools).

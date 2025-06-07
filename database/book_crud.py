@@ -1,99 +1,80 @@
-from datetime import datetime, timezone
-import re
-from typing import Any
-
-from bson import ObjectId
-from motor.motor_asyncio import AsyncIOMotorDatabase
+from sqlalchemy import func
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 
 from api.v1.schemas.book_schemas import BookUpdate
-
-BOOK_COLLECTION = "books"
-
-
-def model_to_dict(model, exclude_unset=True, exclude_none=True):
-    return model.model_dump(exclude_unset=exclude_unset, exclude_none=exclude_none)
+from models.domain_models import Book
 
 
 async def create_book_metadata(
-    db: AsyncIOMotorDatabase,
-    book_data: dict[str, Any],
-) -> dict[str, Any]:
-    book_data["upload_timestamp"] = datetime.now(timezone.utc)
-    book_data["last_modified_timestamp"] = datetime.now(timezone.utc)
-    result = await db[BOOK_COLLECTION].insert_one(book_data)
-    created_book = await db[BOOK_COLLECTION].find_one({"_id": result.inserted_id})
-
-    return created_book  # type: ignore
+    db: AsyncSession,
+    book_data: dict,
+) -> Book:
+    db_book = Book(**book_data)
+    db.add(db_book)
+    await db.commit()
+    await db.refresh(db_book)
+    return db_book
 
 
 async def get_book_by_id(
-    db: AsyncIOMotorDatabase,
-    book_id: str,
-) -> dict[str, Any] | None:
-    if not ObjectId.is_valid(book_id):
-        return None
-
-    return await db[BOOK_COLLECTION].find_one({"_id": ObjectId(book_id)})
+    db: AsyncSession,
+    book_id: int,
+) -> Book | None:
+    result = await db.execute(select(Book).where(Book.id == book_id))
+    return result.scalar_one_or_none()
 
 
 async def get_book_by_hash(
-    db: AsyncIOMotorDatabase,
+    db: AsyncSession,
     file_hash: str,
-) -> dict[str, Any] | None:
-    return await db[BOOK_COLLECTION].find_one({"md5_hash": file_hash})
+) -> Book | None:
+    result = await db.execute(select(Book).where(Book.file_hash == file_hash))
+    return result.scalar_one_or_none()
 
 
 async def get_all_books(
-    db: AsyncIOMotorDatabase,
+    db: AsyncSession,
     skip: int = 0,
     limit: int = 10,
     search_query: str | None = None,
-) -> tuple[list[dict[str, Any]], int]:
-    query_filter = {}
+):
+    query = select(Book)
 
     if search_query:
-        regex = re.compile(f".*{re.escape(search_query)}.*", re.IGNORECASE)
+        query = query.where(Book.title.ilike(f"%{search_query}%"))
 
-        query_filter["$or"] = [
-            {"title": {"$regex": regex}},
-            {"authors.name": {"$regex": regex}},
-            {"tags": {"$regex": regex}},
-        ]
+    result = await db.execute(query.offset(skip).limit(limit))
+    books = result.scalars().all()
+    count = await db.scalar(select(func.count()).select_from(Book))
 
-    cursor = db[BOOK_COLLECTION].find(query_filter).skip(skip).limit(limit)
-    books = await cursor.to_list(length=limit)
-    total_count = await db[BOOK_COLLECTION].count_documents(query_filter)
-
-    return books, total_count
+    return books, count
 
 
 async def update_book_metadata(
-    db: AsyncIOMotorDatabase,
-    book_id: str,
+    db: AsyncSession,
+    book_id: int,
     book_update_data: BookUpdate,
-) -> dict[str, Any] | None:
-    if not ObjectId.is_valid(book_id):
+) -> Book | None:
+    db_book = await get_book_by_id(db, book_id)
+
+    if not db_book:
         return None
 
-    update_data = model_to_dict(book_update_data, exclude_unset=True, exclude_none=True)
+    for field, value in book_update_data.model_dump(exclude_unset=True).items():
+        setattr(db_book, field, value)
 
-    if not update_data:
-        return await get_book_by_id(db, book_id)
-
-    update_data["last_modified_timestamp"] = datetime.now(timezone.utc)
-
-    result = await db[BOOK_COLLECTION].find_one_and_update(
-        {"_id": ObjectId(book_id)},
-        {"$set": update_data},
-        return_document=True,
-    )
-
-    return result
+    await db.commit()
+    await db.refresh(db_book)
+    return db_book
 
 
-async def delete_book_metadata(db: AsyncIOMotorDatabase, book_id: str) -> int:
-    if not ObjectId.is_valid(book_id):
+async def delete_book_metadata(db: AsyncSession, book_id: int) -> int:
+    db_book = await get_book_by_id(db, book_id)
+
+    if not db_book:
         return 0
 
-    result = await db[BOOK_COLLECTION].delete_one({"_id": ObjectId(book_id)})
-    return result.deleted_count
+    await db.delete(db_book)
+    await db.commit()
+    return 1

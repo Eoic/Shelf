@@ -20,7 +20,7 @@ from api.v1.schemas.book_schemas import (
     BookUploadQueued,
     PaginatedBookResponse,
 )
-from core.logger import logger
+from core.config import settings
 from services.book_service import BookService, get_book_service
 
 router = APIRouter()
@@ -35,79 +35,47 @@ def construct_book_display(db_book_data: dict, request: Request) -> BookDisplay:
     book_data = db_book_data.copy()
 
     if book_data.get("cover_image_filename"):
-        book_data["cover_image_url"] = (
-            f"{base_url}api/v1/books/{book_data['_id']}/cover"
-        )
+        book_data["cover_image_url"] = f"{base_url}api/v1/books/{book_data['id']}/cover"
     else:
         book_data["cover_image_url"] = None
 
-    book_data["book_download_url"] = (
-        f"{base_url}api/v1/books/{book_data['_id']}/download"
-    )
-
-    return BookDisplay.model_validate(book_data)
-
-
-async def process_book_upload_task(
-    file_path: Path,
-    original_filename: str,
-    book_service: BookService,
-):
-    logger.info(f"Background task: Processing {original_filename} from {file_path}")
-
-    try:
-        await book_service.process_and_save_book(file_path, original_filename)
-        logger.info(f"Background task: Successfully processed {original_filename}")
-    except Exception as e:
-        logger.error(f"Background task: Error processing {original_filename}: {e}")
-    finally:
-        if file_path.exists():
-            file_path.unlink()
+    return BookDisplay(**book_data)
 
 
 @router.post("/", response_model=BookUploadQueued, status_code=201)
 async def upload_book(
-    _request: Request,
-    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
+    background_tasks: BackgroundTasks = Depends(),
     book_service: BookService = Depends(get_book_service),
 ):
     """
     Uploads a book, processes it (metadata, cover), and stores it.
     Processing is done in the background.
     """
+    filename = file.filename or "uploaded_book"
+    temp_path = Path("temp") / filename
+    temp_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with Path.open(temp_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
     if not file.filename:
-        raise HTTPException(status_code=400, detail="No filename provided.")
-
-    temp_dir = Path("temp")
-    temp_dir.mkdir(parents=True, exist_ok=True)
-    temp_file_path = temp_dir / f"{file.filename}"
-
-    try:
-        with temp_file_path.open("wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-    except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=f"Could not save uploaded file: {e}",
-        ) from e
-    finally:
-        file.file.close()
+            status_code=400,
+            detail="Filename is required for book upload",
+        )
 
-    # FIXME: Celery is not set up.
     background_tasks.add_task(
-        process_book_upload_task,
-        temp_file_path,
+        book_service.process_and_save_book,
+        temp_path,
         file.filename,
-        book_service,
     )
 
-    # # NOTE: Returns incorrect structure.
-    return {
-        "message": "Book upload accepted for background processing.",
-        "filename": file.filename,
-        "temp_path": str(temp_file_path),
-    }
+    return BookUploadQueued(
+        message="Book upload queued",
+        filename=file.filename,
+        temp_path=str(temp_path),
+    )
 
 
 @router.get("/", response_model=PaginatedBookResponse)
@@ -115,33 +83,20 @@ async def list_books(
     request: Request,
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),
-    search_query: str | None = Query(None, alias="q"),
+    search: Optional[str] = Query(None),
     book_service: BookService = Depends(get_book_service),
 ):
     """
     Lists books with pagination and optional search.
     """
-    books_data, total_items = await book_service.get_multiple_books(
-        skip=skip,
-        limit=limit,
-        search_query=search_query,
-    )
-
-    displayed_books = [construct_book_display(book, request) for book in books_data]
-    total_pages = (total_items + limit - 1) // limit
-
-    return PaginatedBookResponse(
-        total_items=total_items,
-        total_pages=total_pages,
-        current_page=(skip // limit) + 1,
-        items_per_page=limit,
-        items=displayed_books,
-    )
+    books, total = await book_service.get_multiple_books(skip, limit, search)
+    items = [construct_book_display(book.__dict__, request) for book in books]
+    return PaginatedBookResponse(items=items, total=total)
 
 
 @router.get("/{book_id}", response_model=BookDisplay)
-async def get_book_details(
-    book_id: str,
+async def get_book(
+    book_id: int,
     request: Request,
     book_service: BookService = Depends(get_book_service),
 ):
@@ -149,84 +104,71 @@ async def get_book_details(
     Retrieves metadata for a specific book.
     """
     book = await book_service.get_book_by_id(book_id)
-
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
-
-    return construct_book_display(book, request)
+    return construct_book_display(book.__dict__, request)
 
 
 @router.put("/{book_id}", response_model=BookDisplay)
-async def update_book_metadata(
-    book_id: str,
-    book_update_data: BookUpdate,
+async def update_book(
+    book_id: int,
+    book_update: BookUpdate,
     request: Request,
     book_service: BookService = Depends(get_book_service),
 ):
     """
     Updates metadata for a specific book.
     """
-    updated_book = await book_service.update_book(book_id, book_update_data)
+    updated = await book_service.update_book(book_id, book_update)
 
-    if not updated_book:
-        raise HTTPException(status_code=404, detail="Book not found or update failed")
+    if not updated:
+        raise HTTPException(status_code=404, detail="Book not found")
 
-    return construct_book_display(updated_book, request)
+    return construct_book_display(updated.__dict__, request)
 
 
 @router.delete("/{book_id}", status_code=204)
 async def delete_book(
-    book_id: str,
+    book_id: int,
     book_service: BookService = Depends(get_book_service),
 ):
     """
     Deletes an book (metadata and associated files).
     """
-    deleted_count = await book_service.delete_book_by_id(book_id)
+    deleted = await book_service.delete_book_by_id(book_id)
 
-    if not deleted_count:
-        raise HTTPException(
-            status_code=404,
-            detail="Book not found or could not be deleted",
-        )
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Book not found")
 
-    return None
+    return
 
 
 @router.get("/{book_id}/cover")
 async def get_book_cover(
-    book_id: str,
-    book_service: BookService = Depends(get_book_service),
+    book_id: int, book_service: BookService = Depends(get_book_service)
 ):
     """
     Retrieves the cover image for an book.
     """
-    cover_path, media_type = await book_service.get_book_cover_path(book_id)
+    book = await book_service.get_book_by_id(book_id)
 
-    if not cover_path or not cover_path.exists():
-        raise HTTPException(status_code=404, detail="Cover image not found")
+    if book.cover_image_filename:
+        cover_path = settings.COVER_FILES_DIR / book.cover_image_filename
+        return FileResponse(cover_path)
 
-    return FileResponse(cover_path, media_type=media_type)
+    raise HTTPException(status_code=404, detail="Cover not found")
 
 
 @router.get("/{book_id}/download")
-async def download_book_file(
-    book_id: str,
-    book_service: BookService = Depends(get_book_service),
+async def download_book(
+    book_id: int, book_service: BookService = Depends(get_book_service)
 ):
     """
     Downloads the original book file.
     """
-    (
-        file_path,
-        original_filename,
-        media_type,
-    ) = await book_service.get_book_file_path_and_details(book_id)
-    if not file_path or not file_path.exists():
-        raise HTTPException(status_code=404, detail="Book file not found")
+    book = await book_service.get_book_by_id(book_id)
 
-    return FileResponse(
-        file_path,
-        media_type=media_type,
-        filename=original_filename,
-    )
+    if book.file_path:
+        return FileResponse(book.file_path, filename=book.title or "book_file")
+
+    raise HTTPException(status_code=404, detail="File not found")

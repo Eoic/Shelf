@@ -180,3 +180,13 @@ storage/covers/*
 !storage/covers/.gitkeep
 temp/*
 !temp/.gitkeep
+
+# Database
+*.sqlite3
+*.db
+*.pyc
+__pycache__/
+alembic/versions/__pycache__/
+alembic/versions/*.pyc
+alembic/versions/*.pyo
+alembic/versions/*.pyd
