@@ -44,8 +44,8 @@ def construct_book_display(db_book_data: dict, request: Request) -> BookDisplay:
 
 @router.post("/", response_model=BookUploadQueued, status_code=201)
 async def upload_book(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    background_tasks: BackgroundTasks = Depends(),
     book_service: BookService = Depends(get_book_service),
 ):
     """

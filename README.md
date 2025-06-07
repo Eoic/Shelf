@@ -54,13 +54,13 @@ To process background tasks (such as book uploads and metadata extraction), you 
 ### Start Celery worker (locally):
 
 ```bash
-celery -A core.celery_app.celery_app worker --loglevel=info
+celery -A core.celery.celery_app worker --loglevel=info
 ```
 
 - If you want to specify a queue:
 
 ```bash
-celery -A core.celery_app.celery_app worker --loglevel=info -Q default
+celery -A core.celery.celery_app worker --loglevel=info -Q default
 ```
 
 ## Database & Migrations
