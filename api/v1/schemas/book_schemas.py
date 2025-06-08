@@ -52,8 +52,8 @@ class BookDisplay(BookBase):
     original_filename: Optional[str] = None
     cover_image_url: Optional[HttpUrl] = None
     book_download_url: Optional[HttpUrl] = None
-    upload_timestamp: datetime
-    last_modified_timestamp: datetime
+    uploaded_at: datetime
+    modified_at: Optional[datetime] = None  # <-- Make this optional
 
     class Config:
         populate_by_name = True

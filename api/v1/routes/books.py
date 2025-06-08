@@ -34,7 +34,7 @@ def construct_book_display(db_book_data: dict, request: Request) -> BookDisplay:
     base_url = get_base_url(request)
     book_data = db_book_data.copy()
 
-    if book_data.get("cover_image_filename"):
+    if book_data.get("cover_filename"):
         book_data["cover_image_url"] = f"{base_url}api/v1/books/{book_data['id']}/cover"
     else:
         book_data["cover_image_url"] = None
@@ -145,15 +145,16 @@ async def delete_book(
 
 @router.get("/{book_id}/cover")
 async def get_book_cover(
-    book_id: int, book_service: BookService = Depends(get_book_service)
+    book_id: int,
+    book_service: BookService = Depends(get_book_service),
 ):
     """
     Retrieves the cover image for an book.
     """
     book = await book_service.get_book_by_id(book_id)
 
-    if book.cover_image_filename:
-        cover_path = settings.COVER_FILES_DIR / book.cover_image_filename
+    if book.cover_filename:
+        cover_path = settings.COVER_FILES_DIR / book.cover_filename
         return FileResponse(cover_path)
 
     raise HTTPException(status_code=404, detail="Cover not found")
@@ -161,7 +162,8 @@ async def get_book_cover(
 
 @router.get("/{book_id}/download")
 async def download_book(
-    book_id: int, book_service: BookService = Depends(get_book_service)
+    book_id: int,
+    book_service: BookService = Depends(get_book_service),
 ):
     """
     Downloads the original book file.

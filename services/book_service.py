@@ -55,27 +55,25 @@ class BookService:
         self,
         file_path: Path,
         original_filename: str,
-    ) -> BookInDB:
+    ) -> BookInDB | None:
         file_hash = self._generate_file_hash(file_path)
         existing_book = await book_crud.get_book_by_hash(self.db, file_hash)
 
         if existing_book:
             if file_path.exists():
                 file_path.unlink()
-            raise HTTPException(
-                status_code=409,
-                detail=f"Book with same content (hash: {file_hash}) already exists with ID: {existing_book['_id']}",
+            logger.warning(
+                f"Book with same content (hash: {file_hash}) already exists with ID: {getattr(existing_book, 'id', None)}"
             )
+            return None
 
         parser = await self._get_parser(file_path)
 
         if not parser:
             if file_path.exists():
                 file_path.unlink()
-            raise HTTPException(
-                status_code=415,
-                detail=f"Unsupported file format for {original_filename}",
-            )
+            logger.warning(f"Unsupported file format for {original_filename}")
+            return None
 
         extracted_metadata = parser.parse_metadata(file_path)
 
@@ -85,13 +83,6 @@ class BookService:
             )
 
         book_data_to_create: dict[str, Any] = {
-            "original_filename": original_filename,
-            "md5_hash": file_hash,
-            "file_size_bytes": file_path.stat().st_size,
-            "format": extracted_metadata.get(
-                "format",
-                parser.get_file_format(file_path),
-            ),
             "title": extracted_metadata.get("title"),
             "authors": extracted_metadata.get("authors", []),
             "publisher": extracted_metadata.get("publisher"),
@@ -100,6 +91,10 @@ class BookService:
             "description": extracted_metadata.get("description"),
             "tags": extracted_metadata.get("tags", []),
             "identifiers": extracted_metadata.get("identifiers", []),
+            "format": extracted_metadata.get(
+                "format", parser.get_file_format(file_path)
+            ),
+            "file_hash": file_hash,
         }
 
         book_data_to_create = {
@@ -125,9 +120,8 @@ class BookService:
                 detail=f"Could not store book file: {e}",
             ) from e
 
-        book_data_to_create["stored_filename"] = (
-            f"{stored_filename_stem}{stored_file_ext}"  # Store relative name
-        )
+        # Store the file path in the model
+        book_data_to_create["file_path"] = str(stored_file_path)
 
         cover_filename = None
         cover_data_tuple = parser.extract_cover_image_data(stored_file_path)
@@ -152,7 +146,7 @@ class BookService:
                 )
 
         if cover_filename:
-            book_data_to_create["cover_image_filename"] = cover_filename
+            book_data_to_create["cover_filename"] = cover_filename
 
         created_db_book = await book_crud.create_book_metadata(
             self.db,
@@ -196,17 +190,16 @@ class BookService:
         if not book_to_delete:
             return 0
 
-        if book_to_delete.get("stored_filename"):
-            file_to_delete = settings.BOOK_FILES_DIR / book_to_delete["stored_filename"]
-
+        # Use 'file_path' and 'cover_filename' for deletion
+        file_path_value = getattr(book_to_delete, "file_path", None)
+        if file_path_value and isinstance(file_path_value, str):
+            file_to_delete = Path(file_path_value)
             if file_to_delete.exists():
                 file_to_delete.unlink()
 
-        if book_to_delete.get("cover_image_filename"):
-            cover_to_delete = (
-                settings.COVER_FILES_DIR / book_to_delete["cover_image_filename"]
-            )
-
+        cover_filename_value = getattr(book_to_delete, "cover_filename", None)
+        if cover_filename_value and isinstance(cover_filename_value, str):
+            cover_to_delete = settings.COVER_FILES_DIR / cover_filename_value
             if cover_to_delete.exists():
                 cover_to_delete.unlink()
 

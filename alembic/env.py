@@ -8,6 +8,7 @@ from sqlalchemy import engine_from_config, pool
 from alembic import context
 
 from database.base import Base
+from models import domain_models  # Ensure all models are registered
 
 config = context.config
 
