@@ -12,8 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.v1.schemas.book_schemas import BookInDB, BookUpdate
 from core.config import settings
 from core.logger import logger
-from database import book_crud
-from database.db import get_db
+from database import book_crud, get_database
 from parsers.base_parser import BookParser
 from parsers.epub_parser import EpubParser
 from parsers.pdf_parser import PdfParser
@@ -25,7 +24,7 @@ PARSER_MAPPING = {
 
 
 class BookService:
-    def __init__(self, db: AsyncSession = Depends(get_db)):
+    def __init__(self, db: AsyncSession = Depends(get_database)):
         self.db = db
 
     async def _get_parser(self, file_path: Path) -> BookParser | None:
@@ -150,7 +149,7 @@ class BookService:
 
         return BookInDB.model_validate(created_book)
 
-    async def get_multiple_books(
+    async def get_books(
         self,
         skip: int,
         limit: int,
@@ -166,11 +165,11 @@ class BookService:
         book = await book_crud.get_book_by_id(self.db, book_id)
 
         if not book:
-            raise HTTPException(status_code=404, detail="Book not found")
+            raise HTTPException(status_code=404, detail="Book not found.")
 
         return BookInDB.model_validate(book.__dict__)
 
-    async def update_book(
+    async def update_book_by_id(
         self,
         book_id: int,
         book_update_data: BookUpdate,
@@ -213,7 +212,7 @@ class BookService:
 
         return None, None
 
-    async def get_book_file_path_and_details(
+    async def get_book_file_path(
         self,
         book_id: int,
     ) -> tuple[Path | None, str | None, str | None]:
@@ -243,6 +242,6 @@ class BookService:
 
 
 def get_book_service(
-    db: AsyncSession = Depends(get_db),
+    database: AsyncSession = Depends(get_database),
 ) -> BookService:
-    return BookService(db)
+    return BookService(database)

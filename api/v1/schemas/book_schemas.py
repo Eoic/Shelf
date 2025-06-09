@@ -49,6 +49,7 @@ class BookDisplay(BookBase):
     file_hash: Optional[str] = None
     file_path: Optional[str] = None
     file_size_bytes: Optional[int] = None
+    download_url: Optional[HttpUrl] = None
     cover_url: Optional[HttpUrl] = None
     cover_filename: Optional[str] = None
     original_filename: Optional[str] = None

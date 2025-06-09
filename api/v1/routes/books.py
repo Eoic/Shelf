@@ -39,6 +39,11 @@ def construct_book_display(db_book_data: dict, request: Request) -> BookDisplay:
     else:
         book_data["cover_url"] = None
 
+    if book_data.get("file_path"):
+        book_data["download_url"] = f"{base_url}api/v1/books/{book_data['id']}/download"
+    else:
+        book_data["download_url"] = None
+
     return BookDisplay(**book_data)
 
 
@@ -89,7 +94,7 @@ async def list_books(
     """
     Lists books with pagination and optional search.
     """
-    books, total = await book_service.get_multiple_books(skip, limit, search)
+    books, total = await book_service.get_books(skip, limit, search)
     items = [construct_book_display(book, request) for book in books]
     return PaginatedBookResponse(items=items, total=total)
 
@@ -121,7 +126,7 @@ async def update_book(
     """
     Updates metadata for a specific book.
     """
-    updated = await book_service.update_book(book_id, book_update)
+    updated = await book_service.update_book_by_id(book_id, book_update)
 
     if not updated:
         raise HTTPException(status_code=404, detail="Book not found")
@@ -173,6 +178,13 @@ async def download_book(
     book = await book_service.get_book_by_id(book_id)
 
     if book.file_path:
-        return FileResponse(book.file_path, filename=book.title or "book_file")
+        return FileResponse(
+            book.file_path,
+            filename=book.original_filename or book.file_hash,
+            media_type=book.format or "application/octet-stream",
+            headers={
+                "Content-Disposition": f'attachment; filename="{book.original_filename or book.file_hash}"',
+            },
+        )
 
-    raise HTTPException(status_code=404, detail="File not found")
+    raise HTTPException(status_code=404, detail="File not found.")
