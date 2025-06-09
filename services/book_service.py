@@ -62,9 +62,11 @@ class BookService:
         if existing_book:
             if file_path.exists():
                 file_path.unlink()
+
             logger.warning(
-                f"Book with same content (hash: {file_hash}) already exists with ID: {getattr(existing_book, 'id', None)}"
+                f"Book with same content (hash: {file_hash}) already exists with ID: {getattr(existing_book, 'id', None)}",
             )
+
             return None
 
         parser = await self._get_parser(file_path)
