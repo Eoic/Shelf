@@ -32,13 +32,13 @@ class BookService:
         file_format = BookParser.get_file_format(file_path)
 
         if not file_format:
-            logger.error(f"Could not determine file format for {file_path}")
+            logger.error(f"Could not determine file format for {file_path}.")
             return None
 
-        parser_class = PARSER_MAPPING.get(file_format)
+        parser = PARSER_MAPPING.get(file_format)
 
-        if parser_class:
-            return parser_class()
+        if parser:
+            return parser()
 
         return None
 
@@ -51,7 +51,7 @@ class BookService:
 
         return hasher.hexdigest()
 
-    async def process_and_save_book(  # noqa: C901
+    async def store_book(
         self,
         file_path: Path,
         original_filename: str,
@@ -64,7 +64,7 @@ class BookService:
                 file_path.unlink()
 
             logger.warning(
-                f"Book with same content (hash: {file_hash}) already exists with ID: {getattr(existing_book, 'id', None)}",
+                f"Book with same content (hash: {file_hash}) already exists with ID: {getattr(existing_book, 'id', None)}.",
             )
 
             return None
@@ -74,88 +74,81 @@ class BookService:
         if not parser:
             if file_path.exists():
                 file_path.unlink()
-            logger.warning(f"Unsupported file format for {original_filename}")
+
+            logger.warning(f"Unsupported file format for {original_filename}.")
             return None
 
-        extracted_metadata = parser.parse_metadata(file_path)
+        metadata = parser.parse_metadata(file_path)
 
-        if "parsing_error" in extracted_metadata:
+        if "parsing_error" in metadata:
             logger.warning(
-                f"Metadata parsing issue for {original_filename}: {extracted_metadata['parsing_error']}",
+                f"Metadata parsing issue for {original_filename}: {metadata['parsing_error']}",
             )
 
-        book_data_to_create: dict[str, Any] = {
-            "title": extracted_metadata.get("title"),
-            "authors": extracted_metadata.get("authors", []),
-            "publisher": extracted_metadata.get("publisher"),
-            "publication_date": extracted_metadata.get("publication_date"),
-            "language": extracted_metadata.get("language"),
-            "description": extracted_metadata.get("description"),
-            "tags": extracted_metadata.get("tags", []),
-            "identifiers": extracted_metadata.get("identifiers", []),
-            "format": extracted_metadata.get(
-                "format", parser.get_file_format(file_path)
+        book_data: dict[str, Any] = {
+            "title": metadata.get("title"),
+            "authors": metadata.get("authors", []),
+            "publisher": metadata.get("publisher"),
+            "publication_date": metadata.get("publication_date"),
+            "language": metadata.get("language"),
+            "description": metadata.get("description"),
+            "tags": metadata.get("tags", []),
+            "identifiers": metadata.get("identifiers", []),
+            "format": metadata.get(
+                "format",
+                parser.get_file_format(file_path),
             ),
             "file_hash": file_hash,
+            "file_size_bytes": file_path.stat().st_size,
+            "original_filename": original_filename,
         }
 
-        book_data_to_create = {
-            k: v for k, v in book_data_to_create.items() if v is not None
-        }
-
-        book_internal_id_for_filename = str(uuid.uuid4())
-        stored_filename_stem = book_internal_id_for_filename
-        stored_file_ext = file_path.suffix
-
-        stored_file_path = (
-            settings.BOOK_FILES_DIR / f"{stored_filename_stem}{stored_file_ext}"
-        )
+        book_data = {k: v for k, v in book_data.items() if v is not None}
+        filename_stem = str(uuid.uuid4())
+        filename_ext = file_path.suffix
+        stored_file_path = settings.BOOK_FILES_DIR / f"{filename_stem}{filename_ext}"
 
         try:
             settings.BOOK_FILES_DIR.mkdir(parents=True, exist_ok=True)
             file_path.rename(stored_file_path)
-        except Exception as e:
+        except Exception as error:
             if file_path.exists():
                 file_path.unlink()
+
             raise HTTPException(
                 status_code=500,
-                detail=f"Could not store book file: {e}",
-            ) from e
+                detail=f"Could not store book file: {error}",
+            ) from error
 
-        # Store the file path in the model
-        book_data_to_create["file_path"] = str(stored_file_path)
-
+        book_data["file_path"] = str(stored_file_path)
         cover_filename = None
         cover_data_tuple = parser.extract_cover_image_data(stored_file_path)
 
         if cover_data_tuple:
-            image_bytes, original_mimetype = cover_data_tuple
+            image_bytes, _original_mimetype = cover_data_tuple
 
             try:
                 img = Image.open(io.BytesIO(image_bytes))
-                cover_filename_main = f"{stored_filename_stem}_cover.jpg"
+                cover_filename_main = f"{filename_stem}_cover.jpg"
                 cover_path_main = settings.COVER_FILES_DIR / cover_filename_main
-                img.convert("RGB").save(cover_path_main, "JPEG", quality=85)
-                cover_filename = cover_filename_main  # Store this in DB
+                img.convert("RGB").save(cover_path_main, "JPEG", quality=100)
+                cover_filename = cover_filename_main
 
-                thumb_filename = f"{stored_filename_stem}_thumb.jpg"
+                thumb_filename = f"{filename_stem}_thumb.jpg"
                 thumb_path = settings.COVER_FILES_DIR / thumb_filename
                 img.thumbnail((150, 200))
-                img.convert("RGB").save(thumb_path, "JPEG", quality=80)
-            except Exception as e:
+                img.convert("RGB").save(thumb_path, "JPEG", quality=100)
+            except Exception as error:
                 logger.error(
-                    f"Could not process/save cover for {original_filename}: {e}",
+                    f"Could not process/save cover for {original_filename}: {error}",
                 )
 
         if cover_filename:
-            book_data_to_create["cover_filename"] = cover_filename
+            book_data["cover_filename"] = cover_filename
 
-        created_db_book = await book_crud.create_book_metadata(
-            self.db,
-            book_data_to_create,
-        )
+        created_book = await book_crud.create_book_metadata(self.db, book_data)
 
-        return BookInDB.model_validate(created_db_book)
+        return BookInDB.model_validate(created_book)
 
     async def get_multiple_books(
         self,
@@ -167,9 +160,7 @@ class BookService:
 
         return [
             BookInDB.model_validate(book.__dict__).model_dump() for book in books
-        ], int(
-            count or 0,
-        )
+        ], int(count or 0)
 
     async def get_book_by_id(self, book_id: int):
         book = await book_crud.get_book_by_id(self.db, book_id)
@@ -192,16 +183,19 @@ class BookService:
         if not book_to_delete:
             return 0
 
-        # Use 'file_path' and 'cover_filename' for deletion
-        file_path_value = getattr(book_to_delete, "file_path", None)
-        if file_path_value and isinstance(file_path_value, str):
-            file_to_delete = Path(file_path_value)
+        file_path = getattr(book_to_delete, "file_path", None)
+
+        if file_path and isinstance(file_path, str):
+            file_to_delete = Path(file_path)
+
             if file_to_delete.exists():
                 file_to_delete.unlink()
 
-        cover_filename_value = getattr(book_to_delete, "cover_filename", None)
-        if cover_filename_value and isinstance(cover_filename_value, str):
-            cover_to_delete = settings.COVER_FILES_DIR / cover_filename_value
+        cover_filename = getattr(book_to_delete, "cover_filename", None)
+
+        if cover_filename and isinstance(cover_filename, str):
+            cover_to_delete = settings.COVER_FILES_DIR / cover_filename
+
             if cover_to_delete.exists():
                 cover_to_delete.unlink()
 
@@ -210,8 +204,8 @@ class BookService:
     async def get_book_cover_path(self, book_id: int) -> tuple[Path | None, str | None]:
         book = await self.get_book_by_id(book_id)
 
-        if book and book.cover_image_filename:
-            cover_path = settings.COVER_FILES_DIR / book.cover_image_filename
+        if book and book.cover_filename:
+            cover_path = settings.COVER_FILES_DIR / book.cover_filename
 
             if cover_path.exists():
                 media_type, _ = mimetypes.guess_type(cover_path)
@@ -231,12 +225,13 @@ class BookService:
             if file_path.exists():
                 media_type, _ = mimetypes.guess_type(file_path)
 
-                if book.format == "EPUB":
-                    media_type = media_type or "application/epub+zip"
-                elif book.format == "PDF":
-                    media_type = media_type or "application/pdf"
-                elif book.format.startswith("MOBI"):
-                    media_type = media_type or "application/x-mobipocket-book"
+                match book.format:
+                    case "EPUB":
+                        media_type = media_type or "application/epub+zip"
+                    case "PDF":
+                        media_type = media_type or "application/pdf"
+                    case format if format and format.startswith("MOBI"):
+                        media_type = media_type or "application/x-mobipocket-book"
 
                 return (
                     file_path,

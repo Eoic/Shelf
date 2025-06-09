@@ -35,9 +35,9 @@ def construct_book_display(db_book_data: dict, request: Request) -> BookDisplay:
     book_data = db_book_data.copy()
 
     if book_data.get("cover_filename"):
-        book_data["cover_image_url"] = f"{base_url}api/v1/books/{book_data['id']}/cover"
+        book_data["cover_url"] = f"{base_url}api/v1/books/{book_data['id']}/cover"
     else:
-        book_data["cover_image_url"] = None
+        book_data["cover_url"] = None
 
     return BookDisplay(**book_data)
 
@@ -66,7 +66,7 @@ async def upload_book(
         )
 
     background_tasks.add_task(
-        book_service.process_and_save_book,
+        book_service.store_book,
         temp_path,
         file.filename,
     )

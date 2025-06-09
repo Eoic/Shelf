@@ -46,15 +46,14 @@ class BookUploadQueued(BaseModel):
 
 class BookDisplay(BookBase):
     id: int
-    # file_size_bytes: Optional[int] = None
     file_hash: Optional[str] = None
     file_path: Optional[str] = None
-    # cover_filename: Optional[str] = None
-    # original_filename: Optional[str] = None
-    # cover_image_url: Optional[HttpUrl] = None
-    # book_download_url: Optional[HttpUrl] = None
+    file_size_bytes: Optional[int] = None
+    cover_url: Optional[HttpUrl] = None
+    cover_filename: Optional[str] = None
+    original_filename: Optional[str] = None
     uploaded_at: datetime
-    modified_at: Optional[datetime] = None  # <-- Make this optional
+    modified_at: Optional[datetime] = None
 
     class Config:
         populate_by_name = True
@@ -62,7 +61,7 @@ class BookDisplay(BookBase):
 
 
 class BookInDB(BookDisplay):
-    cover_image_filename: Optional[str] = None
+    cover_filename: Optional[str] = None
 
 
 class PaginatedBookResponse(BaseModel):
