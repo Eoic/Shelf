@@ -85,7 +85,7 @@ class BookService:
             )
 
         book_data: dict[str, Any] = {
-            "title": metadata.get("title"),
+            "title": metadata.get("title") or original_filename,
             "authors": metadata.get("authors", []),
             "publisher": metadata.get("publisher"),
             "publication_date": metadata.get("publication_date"),

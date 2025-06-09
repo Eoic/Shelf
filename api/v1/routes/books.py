@@ -162,7 +162,8 @@ async def get_book_cover(
 ):
     """
     Retrieves the cover image for a book.
-    Optionally, a variant (e.g., 'thumbnail') can be requested.
+    Optionally, a variant can be requested. Available variants
+    depend on the implementation and may include 'thumbnail', 'original', etc.
     """
     book = await book_service.get_book_by_id(book_id)
 
@@ -178,7 +179,7 @@ async def get_book_cover(
         if cover_path.exists():
             return FileResponse(cover_path)
 
-    raise HTTPException(status_code=404, detail="Cover not found")
+    raise HTTPException(status_code=404, detail="Cover not found.")
 
 
 @router.get("/{book_id}/download")
