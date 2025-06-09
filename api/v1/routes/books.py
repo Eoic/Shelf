@@ -153,16 +153,30 @@ async def delete_book(
 @router.get("/{book_id}/cover")
 async def get_book_cover(
     book_id: int,
+    variant: Optional[str] = Query(
+        None,
+        description="Cover variant, e.g., 'thumbnail'",
+        examples=["thumbnail", "original"],
+    ),
     book_service: BookService = Depends(get_book_service),
 ):
     """
-    Retrieves the cover image for an book.
+    Retrieves the cover image for a book.
+    Optionally, a variant (e.g., 'thumbnail') can be requested.
     """
     book = await book_service.get_book_by_id(book_id)
 
     if book.cover_filename:
-        cover_path = settings.COVER_FILES_DIR / book.cover_filename
-        return FileResponse(cover_path)
+        if variant:
+            stem = Path(book.cover_filename).stem
+            suffix = Path(book.cover_filename).suffix
+            variant_filename = f"{stem}_{variant}{suffix}"
+            cover_path = settings.COVER_FILES_DIR / variant_filename
+        else:
+            cover_path = settings.COVER_FILES_DIR / book.cover_filename
+
+        if cover_path.exists():
+            return FileResponse(cover_path)
 
     raise HTTPException(status_code=404, detail="Cover not found")
 

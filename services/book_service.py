@@ -127,16 +127,15 @@ class BookService:
             image_bytes, _original_mimetype = cover_data_tuple
 
             try:
-                img = Image.open(io.BytesIO(image_bytes))
+                image = Image.open(io.BytesIO(image_bytes))
                 cover_filename_main = f"{filename_stem}_cover.jpg"
                 cover_path_main = settings.COVER_FILES_DIR / cover_filename_main
-                img.convert("RGB").save(cover_path_main, "JPEG", quality=100)
+                image.convert("RGB").save(cover_path_main, "JPEG", quality=100)
+                thumbnail_filename = f"{filename_stem}_cover_thumbnail.jpg"
+                thumbnail_path = settings.COVER_FILES_DIR / thumbnail_filename
+                image.thumbnail((150, 200))
+                image.convert("RGB").save(thumbnail_path, "JPEG", quality=100)
                 cover_filename = cover_filename_main
-
-                thumb_filename = f"{filename_stem}_thumb.jpg"
-                thumb_path = settings.COVER_FILES_DIR / thumb_filename
-                img.thumbnail((150, 200))
-                img.convert("RGB").save(thumb_path, "JPEG", quality=100)
             except Exception as error:
                 logger.error(
                     f"Could not process/save cover for {original_filename}: {error}",
