@@ -14,6 +14,7 @@ from fastapi import (
     UploadFile,
 )
 from fastapi.responses import FileResponse
+from fastapi.security import OAuth2PasswordBearer
 
 from api.v1.schemas.book_schemas import (
     BookDisplay,
@@ -21,7 +22,7 @@ from api.v1.schemas.book_schemas import (
     BookUploadQueued,
     PaginatedBookResponse,
 )
-from core.auth import get_current_user
+from core.auth import get_current_user, oauth2_scheme
 from core.config import settings
 from services.book_service import BookService, get_book_service
 
@@ -93,6 +94,7 @@ async def list_books(
     limit: int = Query(10, ge=1, le=100),
     search: Optional[str] = Query(None),
     book_service: BookService = Depends(get_book_service),
+    token: str = Security(oauth2_scheme),
     current_user=Security(get_current_user),
 ):
     """
@@ -108,6 +110,7 @@ async def get_book(
     book_id: int,
     request: Request,
     book_service: BookService = Depends(get_book_service),
+    current_user=Security(get_current_user),
 ):
     """
     Retrieves metadata for a specific book.
@@ -126,6 +129,7 @@ async def update_book(
     book_update: BookUpdate,
     request: Request,
     book_service: BookService = Depends(get_book_service),
+    current_user=Security(get_current_user),
 ):
     """
     Updates metadata for a specific book.
@@ -142,6 +146,7 @@ async def update_book(
 async def delete_book(
     book_id: int,
     book_service: BookService = Depends(get_book_service),
+    current_user=Security(get_current_user),
 ):
     """
     Deletes an book (metadata and associated files).
@@ -163,6 +168,7 @@ async def get_book_cover(
         examples=["thumbnail", "original"],
     ),
     book_service: BookService = Depends(get_book_service),
+    current_user=Security(get_current_user),
 ):
     """
     Retrieves the cover image for a book.
@@ -187,12 +193,13 @@ async def get_book_cover(
 
 
 @router.get("/{book_id}/download")
-async def download_book(
+async def download_book_file(
     book_id: int,
     book_service: BookService = Depends(get_book_service),
+    current_user=Security(get_current_user),
 ):
     """
-    Downloads the original book file.
+    Download the book file for a specific book.
     """
     book = await book_service.get_book_by_id(book_id)
 
