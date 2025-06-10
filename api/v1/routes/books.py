@@ -1,6 +1,7 @@
 from pathlib import Path
 import shutil
 from typing import Optional
+import uuid
 
 from fastapi import (
     APIRouter,
@@ -23,6 +24,7 @@ from api.v1.schemas.book_schemas import (
 )
 from core.auth import get_current_user
 from core.config import settings
+from models import book
 from services.book_service import BookService, get_book_service
 
 router = APIRouter()
@@ -60,14 +62,15 @@ async def upload_book(
     Uploads a book, processes it (metadata, cover), and stores it.
     Processing is done in the background.
     """
-    filename = file.filename or "uploaded_book"
-    temp_path = Path("temp") / filename
+    filename = file.filename or "book.file"
+    extension = filename.rsplit(".", 1)[-1].lower()
+    temp_path = Path("temp") / f"{uuid.uuid4()!s}.{extension}"
     temp_path.parent.mkdir(parents=True, exist_ok=True)
 
     with Path.open(temp_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    if not file.filename:
+    if not filename:
         raise HTTPException(
             status_code=400,
             detail="Filename is required for book upload",
@@ -76,12 +79,12 @@ async def upload_book(
     background_tasks.add_task(
         book_service.store_book,
         temp_path,
-        file.filename,
+        filename,
     )
 
     return BookUploadQueued(
         message="Book upload queued",
-        filename=file.filename,
+        filename=filename,
         temp_path=str(temp_path),
     )
 
