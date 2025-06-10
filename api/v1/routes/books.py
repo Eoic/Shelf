@@ -14,7 +14,6 @@ from fastapi import (
     UploadFile,
 )
 from fastapi.responses import FileResponse
-from fastapi.security import OAuth2PasswordBearer
 
 from api.v1.schemas.book_schemas import (
     BookDisplay,
@@ -22,7 +21,7 @@ from api.v1.schemas.book_schemas import (
     BookUploadQueued,
     PaginatedBookResponse,
 )
-from core.auth import get_current_user, oauth2_scheme
+from core.auth import get_current_user
 from core.config import settings
 from services.book_service import BookService, get_book_service
 
@@ -94,7 +93,6 @@ async def list_books(
     limit: int = Query(10, ge=1, le=100),
     search: Optional[str] = Query(None),
     book_service: BookService = Depends(get_book_service),
-    token: str = Security(oauth2_scheme),
     current_user=Security(get_current_user),
 ):
     """

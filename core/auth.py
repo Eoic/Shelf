@@ -1,9 +1,9 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import Depends, HTTPException, Security, status
+from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt  # type: ignore
+from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -58,7 +58,7 @@ async def authenticate_user(
 ) -> Optional[User]:
     user = await get_user_by_username(db, username)
 
-    if not user or not verify_password(password, user.hashed_password):
+    if not user or not verify_password(password, user.password):
         return None
 
     return user
@@ -89,26 +89,3 @@ async def get_current_user(
         raise credentials_exception
 
     return user
-
-
-# In your router or endpoint definitions, add a security dependency:
-# Example for a router:
-# from fastapi import APIRouter, Depends, Security
-# from core.auth import get_current_user, oauth2_scheme
-# router = APIRouter()
-#
-# @router.get("/protected-endpoint")
-# async def protected_route(current_user=Security(get_current_user, scopes=[])):
-#     ...
-#
-# In main.py, you can also add security schemes to FastAPI:
-# app = FastAPI(..., openapi_tags=[...], swagger_ui_init_oauth={"usePkceWithAuthorizationCodeGrant": True})
-#
-# But the most important part is using Security(get_current_user) in your endpoints, not just Depends(get_current_user).
-#
-# For example, in books.py:
-# @router.get("/", ...)
-# async def list_books(..., current_user=Security(get_current_user)):
-#     ...
-#
-# This will make the "Authorize" button appear in the Swagger UI.

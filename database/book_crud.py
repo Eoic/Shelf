@@ -10,11 +10,11 @@ async def create_book_metadata(
     db: AsyncSession,
     book_data: dict,
 ) -> Book:
-    db_book = Book(**book_data)
-    db.add(db_book)
+    book = Book(**book_data)
+    db.add(book)
     await db.commit()
-    await db.refresh(db_book)
-    return db_book
+    await db.refresh(book)
+    return book
 
 
 async def get_book_by_id(
@@ -56,25 +56,25 @@ async def update_book_metadata(
     book_id: int,
     book_update_data: BookUpdate,
 ) -> Book | None:
-    db_book = await get_book_by_id(db, book_id)
+    book = await get_book_by_id(db, book_id)
 
-    if not db_book:
+    if not book:
         return None
 
     for field, value in book_update_data.model_dump(exclude_unset=True).items():
-        setattr(db_book, field, value)
+        setattr(book, field, value)
 
     await db.commit()
-    await db.refresh(db_book)
-    return db_book
+    await db.refresh(book)
+    return book
 
 
 async def delete_book_metadata(db: AsyncSession, book_id: int) -> int:
-    db_book = await get_book_by_id(db, book_id)
+    book = await get_book_by_id(db, book_id)
 
-    if not db_book:
+    if not book:
         return 0
 
-    await db.delete(db_book)
+    await db.delete(book)
     await db.commit()
     return 1

@@ -21,7 +21,7 @@ async def login_for_access_token(
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
+            detail="Incorrect username or password.",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -43,15 +43,14 @@ async def register_user(
     if result.scalars().first():
         raise HTTPException(status_code=400, detail="Username is already taken.")
 
-    password = get_password_hash(user_create.password)
-
     user = User(
         username=user_create.username,
         email=user_create.email,
-        hashed_password=password,
+        password=get_password_hash(user_create.password),
     )
 
     db.add(user)
     await db.commit()
     await db.refresh(user)
+
     return user

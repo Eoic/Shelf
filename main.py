@@ -3,8 +3,8 @@ from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from fastapi import FastAPI
 
-from api.v1.routes import books as books_v1_router
 from api.v1.routes import auth as auth_v1_router
+from api.v1.routes import books as books_v1_router
 from core.config import settings
 
 load_dotenv()
