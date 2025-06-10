@@ -24,7 +24,6 @@ from api.v1.schemas.book_schemas import (
 )
 from core.auth import get_current_user
 from core.config import settings
-from models import book
 from services.book_service import BookService, get_book_service
 
 router = APIRouter()
@@ -119,7 +118,7 @@ async def get_book(
     book = await book_service.get_book_by_id(book_id)
 
     if not book:
-        raise HTTPException(status_code=404, detail="Book not found")
+        raise HTTPException(status_code=404, detail="Book not found.")
 
     return construct_book_display(book.__dict__, request)
 
