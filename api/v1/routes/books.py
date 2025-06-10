@@ -10,6 +10,7 @@ from fastapi import (
     HTTPException,
     Query,
     Request,
+    Security,
     UploadFile,
 )
 from fastapi.responses import FileResponse
@@ -20,6 +21,7 @@ from api.v1.schemas.book_schemas import (
     BookUploadQueued,
     PaginatedBookResponse,
 )
+from core.auth import get_current_user
 from core.config import settings
 from services.book_service import BookService, get_book_service
 
@@ -52,6 +54,7 @@ async def upload_book(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     book_service: BookService = Depends(get_book_service),
+    current_user=Security(get_current_user),
 ):
     """
     Uploads a book, processes it (metadata, cover), and stores it.
@@ -90,6 +93,7 @@ async def list_books(
     limit: int = Query(10, ge=1, le=100),
     search: Optional[str] = Query(None),
     book_service: BookService = Depends(get_book_service),
+    current_user=Security(get_current_user),
 ):
     """
     Lists books with pagination and optional search.
