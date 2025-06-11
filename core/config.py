@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     # Security.
     SECRET_KEY: str | None = os.getenv("SECRET_KEY")
 
+    # Storage.
+    STORAGE_BACKEND: str = os.getenv("STORAGE_BACKEND", "filesystem")
+
     @property
     def database_url(self) -> str:
         return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"

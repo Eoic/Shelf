@@ -2,7 +2,7 @@ import hashlib
 import io
 import mimetypes
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 import uuid
 
 from fastapi import Depends, HTTPException
@@ -16,16 +16,32 @@ from database import book_crud, get_database
 from parsers.base_parser import BookParser
 from parsers.epub_parser import EpubParser
 from parsers.pdf_parser import PdfParser
+from services.filesystem_storage import FileSystemStorage
+from services.storage_backend import StorageBackend
 
 PARSER_MAPPING = {
     "EPUB": EpubParser,
     "PDF": PdfParser,
 }
 
+STORAGE_BACKENDS = {
+    "filesystem": FileSystemStorage(),
+    # "minio": MinIOStorage(),
+    # "gdrive": GoogleDriveStorage(), etc.
+}
+
 
 class BookService:
-    def __init__(self, db: AsyncSession = Depends(get_database)):
+    def __init__(
+        self,
+        db: AsyncSession = Depends(get_database),
+        storage_backend: Optional[StorageBackend] = None,
+    ):
         self.db = db
+        if storage_backend is None:
+            self.storage_backend = STORAGE_BACKENDS[settings.STORAGE_BACKEND]
+        else:
+            self.storage_backend = storage_backend
 
     async def _get_parser(self, file_path: Path) -> BookParser | None:
         file_format = BookParser.get_file_format(file_path)
@@ -105,23 +121,12 @@ class BookService:
         book_data = {k: v for k, v in book_data.items() if v is not None}
         filename_stem = str(uuid.uuid4())
         filename_ext = file_path.suffix
-        stored_file_path = settings.BOOK_FILES_DIR / f"{filename_stem}{filename_ext}"
+        stored_filename = f"{filename_stem}{filename_ext}"
+        stored_file_path = self.storage_backend.store_file(file_path, stored_filename)
 
-        try:
-            settings.BOOK_FILES_DIR.mkdir(parents=True, exist_ok=True)
-            file_path.rename(stored_file_path)
-        except Exception as error:
-            if file_path.exists():
-                file_path.unlink()
-
-            raise HTTPException(
-                status_code=500,
-                detail=f"Could not store book file: {error}",
-            ) from error
-
-        book_data["file_path"] = str(stored_file_path)
+        book_data["file_path"] = stored_file_path
         cover_filename = None
-        cover_data_tuple = parser.extract_cover_image_data(stored_file_path)
+        cover_data_tuple = parser.extract_cover_image_data(Path(stored_file_path))
 
         if cover_data_tuple:
             image_bytes, _original_mimetype = cover_data_tuple
