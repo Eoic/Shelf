@@ -51,7 +51,12 @@ def construct_book_display(db_book_data: dict, request: Request) -> BookDisplay:
     return BookDisplay(**book_data)
 
 
-@router.post("/", response_model=BookUploadQueued, status_code=201)
+@router.post(
+    "/",
+    response_model=BookUploadQueued,
+    status_code=201,
+    summary="Process and upload a new book",
+)
 async def upload_book(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
@@ -90,7 +95,11 @@ async def upload_book(
     )
 
 
-@router.get("/", response_model=PaginatedBookResponse)
+@router.get(
+    "/",
+    response_model=PaginatedBookResponse,
+    summary="List uploaded books",
+)
 async def list_books(
     request: Request,
     skip: int = Query(0, ge=0),
@@ -107,7 +116,11 @@ async def list_books(
     return PaginatedBookResponse(items=items, total=total)
 
 
-@router.get("/{book_id}", response_model=BookDisplay)
+@router.get(
+    "/{book_id}",
+    response_model=BookDisplay,
+    summary="Get book metadata",
+)
 async def get_book(
     book_id: int,
     request: Request,
@@ -125,7 +138,11 @@ async def get_book(
     return construct_book_display(book.__dict__, request)
 
 
-@router.put("/{book_id}", response_model=BookDisplay)
+@router.put(
+    "/{book_id}",
+    response_model=BookDisplay,
+    summary="Update book metadata",
+)
 async def update_book(
     book_id: int,
     book_update: BookUpdate,
@@ -144,7 +161,11 @@ async def update_book(
     return construct_book_display(updated.__dict__, request)
 
 
-@router.delete("/{book_id}", status_code=204)
+@router.delete(
+    "/{book_id}",
+    status_code=204,
+    summary="Delete a book",
+)
 async def delete_book(
     book_id: int,
     book_service: BookService = Depends(get_book_service),
@@ -161,7 +182,11 @@ async def delete_book(
     return
 
 
-@router.get("/{book_id}/cover")
+@router.get(
+    "/{book_id}/cover",
+    response_class=FileResponse,
+    summary="Get book cover (either original or thumbnail)",
+)
 async def get_book_cover(
     book_id: int,
     variant: Optional[str] = Query(
@@ -194,7 +219,10 @@ async def get_book_cover(
     raise HTTPException(status_code=404, detail="Cover not found.")
 
 
-@router.get("/{book_id}/download")
+@router.get(
+    "/{book_id}/download",
+    summary="Download book file",
+)
 async def download_book_file(
     book_id: int,
     book_service: BookService = Depends(get_book_service),

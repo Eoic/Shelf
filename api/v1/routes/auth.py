@@ -17,7 +17,10 @@ from models.user import User
 router = APIRouter()
 
 
-@router.post("/token")
+@router.post(
+    "/token",
+    summary="Login and get access token",
+)
 async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_database),
@@ -39,7 +42,11 @@ async def login_for_access_token(
     }
 
 
-@router.post("/register", response_model=UserRead)
+@router.post(
+    "/register",
+    response_model=UserRead,
+    summary="Register a new user",
+)
 async def register_user(
     user_create: UserCreate,
     db: AsyncSession = Depends(get_database),
@@ -62,7 +69,11 @@ async def register_user(
     return user
 
 
-@router.get("/me", response_model=UserRead)
+@router.get(
+    "/me",
+    response_model=UserRead,
+    summary="Get current user details",
+)
 async def get_user_preferences(
     db: AsyncSession = Depends(get_database),
     current_user: User = Security(get_current_user),
@@ -70,7 +81,11 @@ async def get_user_preferences(
     return current_user
 
 
-@router.put("/preferences", response_model=UserRead)
+@router.put(
+    "/preferences",
+    response_model=UserRead,
+    summary="Update user preferences",
+)
 async def update_user_preferences(
     preferences_update: UserPreferencesUpdate,
     db: AsyncSession = Depends(get_database),
