@@ -13,6 +13,7 @@ from api.v1.schemas.book_schemas import BookInDB, BookUpdate
 from core.config import settings
 from core.logger import logger
 from database import book_crud, get_database
+from models.user import User
 from parsers.base_parser import BookParser
 from parsers.epub_parser import EpubParser
 from parsers.pdf_parser import PdfParser
@@ -27,7 +28,7 @@ PARSER_MAPPING = {
 STORAGE_BACKENDS = {
     "filesystem": FileSystemStorage(),
     # "minio": MinIOStorage(),
-    # "gdrive": GoogleDriveStorage(), etc.
+    # "gdrive": GoogleDriveStorage()
 }
 
 
@@ -42,6 +43,17 @@ class BookService:
             self.storage_backend = STORAGE_BACKENDS[settings.STORAGE_BACKEND]
         else:
             self.storage_backend = storage_backend
+
+    async def _get_user_storage_backend(self, user: User | None) -> StorageBackend:
+        backend = None
+
+        if user is not None and hasattr(user.preferences, "storage_backend"):
+            backend = user.preferences.get("storage_backend")
+
+        if backend and backend in STORAGE_BACKENDS:
+            return STORAGE_BACKENDS[backend]
+
+        return STORAGE_BACKENDS[settings.STORAGE_BACKEND]
 
     async def _get_parser(self, file_path: Path) -> BookParser | None:
         file_format = BookParser.get_file_format(file_path)
@@ -70,6 +82,7 @@ class BookService:
         self,
         file_path: Path,
         original_filename: str,
+        user: User | None = None,
     ) -> BookInDB | None:
         file_hash = self._generate_file_hash(file_path)
         existing_book = await book_crud.get_book_by_hash(self.db, file_hash)
@@ -122,7 +135,8 @@ class BookService:
         filename_stem = str(uuid.uuid4())
         filename_ext = file_path.suffix
         stored_filename = f"{filename_stem}{filename_ext}"
-        stored_file_path = self.storage_backend.store_file(file_path, stored_filename)
+        storage_backend = await self._get_user_storage_backend(user)
+        stored_file_path = storage_backend.store_file(file_path, stored_filename)
 
         book_data["file_path"] = stored_file_path
         cover_filename = None

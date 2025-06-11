@@ -1,10 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Security, status
 from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from api.v1.schemas.user_schemas import UserCreate, UserRead
-from core.auth import authenticate_user, create_access_token, get_password_hash
+from api.v1.schemas.user_schemas import UserCreate, UserPreferencesUpdate, UserRead
+from core.auth import (
+    authenticate_user,
+    create_access_token,
+    get_current_user,
+    get_password_hash,
+)
 from database import get_database
 from models.user import User
 
@@ -54,3 +60,40 @@ async def register_user(
     await db.refresh(user)
 
     return user
+
+
+@router.get("/me", response_model=UserRead)
+async def get_user_preferences(
+    db: AsyncSession = Depends(get_database),
+    current_user: User = Security(get_current_user),
+):
+    return current_user
+
+
+@router.put("/preferences", response_model=UserRead)
+async def update_user_preferences(
+    preferences_update: UserPreferencesUpdate,
+    db: AsyncSession = Depends(get_database),
+    current_user: User = Security(get_current_user),
+):
+    current_preferences = (
+        current_user.preferences if isinstance(current_user.preferences, dict) else {}
+    )
+
+    new_preferences = {
+        **current_preferences,
+        **preferences_update.model_dump(),
+    }
+
+    query = (
+        update(User)
+        .where(User.id == current_user.id)
+        .values(preferences=new_preferences)
+        .execution_options(synchronize_session="fetch")
+    )
+
+    await db.execute(query)
+    await db.commit()
+    await db.refresh(current_user)
+
+    return current_user

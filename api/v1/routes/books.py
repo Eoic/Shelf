@@ -24,6 +24,7 @@ from api.v1.schemas.book_schemas import (
 )
 from core.auth import get_current_user
 from core.config import settings
+from models.user import User
 from services.book_service import BookService, get_book_service
 
 router = APIRouter()
@@ -55,7 +56,7 @@ async def upload_book(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     book_service: BookService = Depends(get_book_service),
-    current_user=Security(get_current_user),
+    current_user: User = Security(get_current_user),
 ):
     """
     Uploads a book, processes it (metadata, cover), and stores it.
@@ -79,6 +80,7 @@ async def upload_book(
         book_service.store_book,
         temp_path,
         filename,
+        current_user,
     )
 
     return BookUploadQueued(

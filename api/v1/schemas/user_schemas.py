@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, EmailStr
 
 
@@ -8,10 +10,9 @@ class UserCreate(BaseModel):
 
 
 class UserRead(BaseModel):
-    id: int
     username: str
     email: EmailStr
-    is_active: bool
+    preferences: dict
 
     class Config:
         from_attributes = True
@@ -20,3 +21,7 @@ class UserRead(BaseModel):
 class UserLogin(BaseModel):
     username: str
     password: str
+
+
+class UserPreferencesUpdate(BaseModel):
+    storage_backend: Literal["filesystem", "s3", "gdrive"]
