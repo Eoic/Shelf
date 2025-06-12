@@ -1,3 +1,4 @@
+from ast import In
 import hashlib
 import io
 import mimetypes
@@ -18,6 +19,7 @@ from parsers.base_parser import BookParser
 from parsers.epub_parser import EpubParser
 from parsers.pdf_parser import PdfParser
 from services.filesystem_storage import FileSystemStorage
+from services.minio_storage import MinIOStorage
 from services.storage_backend import StorageBackend
 
 PARSER_MAPPING = {
@@ -26,34 +28,54 @@ PARSER_MAPPING = {
 }
 
 STORAGE_BACKENDS = {
-    "filesystem": FileSystemStorage(),
-    "minio": MinIOStorage(),
-    # "gdrive": GoogleDriveStorage()
+    "filesystem": FileSystemStorage,
+    "minio": MinIOStorage,
 }
 
 
+class InvalidStorageBackendError(Exception):
+    MINIO_NOT_CONFIGURED = "MinIO credentials not configured in user preferences."
+    STORAGE_NOT_FOUND = "Specified storage backend not found."
+
+    def __init__(self, message: str):
+        super().__init__(message)
+        self.message = message
+
+
 class BookService:
-    def __init__(
-        self,
-        db: AsyncSession = Depends(get_database),
-        storage_backend: Optional[StorageBackend] = None,
-    ):
+    def __init__(self, db: AsyncSession = Depends(get_database)):
         self.db = db
-        if storage_backend is None:
-            self.storage_backend = STORAGE_BACKENDS[settings.STORAGE_BACKEND]
-        else:
-            self.storage_backend = storage_backend
 
     async def _get_user_storage_backend(self, user: User | None) -> StorageBackend:
-        backend = None
+        if not user or not hasattr(user, "preferences"):
+            raise HTTPException(
+                status_code=400,
+                detail="User preferences not found. Ensure user is authenticated.",
+            )
 
-        if user is not None and hasattr(user.preferences, "storage_backend"):
-            backend = user.preferences.get("storage_backend")
+        backend = user.preferences.get("storage_backend")
 
-        if backend and backend in STORAGE_BACKENDS:
-            return STORAGE_BACKENDS[backend]
+        match backend:
+            case "filesystem":
+                return STORAGE_BACKENDS["filesystem"]()
+            case "minio":
+                if not user.preferences.get("minio_credentials"):
+                    raise InvalidStorageBackendError(
+                        InvalidStorageBackendError.MINIO_NOT_CONFIGURED,
+                    )
 
-        return STORAGE_BACKENDS[settings.STORAGE_BACKEND]
+                credentials = user.preferences["minio_credentials"]
+
+                return STORAGE_BACKENDS["minio"](
+                    access_key=credentials["access_key"],
+                    secret_key=credentials["secret_key"],
+                    endpoint=credentials["endpoint"],
+                    secure=credentials.get("secure", False),
+                )
+            case _:
+                raise InvalidStorageBackendError(
+                    InvalidStorageBackendError.STORAGE_NOT_FOUND,
+                )
 
     async def _get_parser(self, file_path: Path) -> BookParser | None:
         file_format = BookParser.get_file_format(file_path)
@@ -134,8 +156,18 @@ class BookService:
         book_data = {k: v for k, v in book_data.items() if v is not None}
         filename_stem = str(uuid.uuid4())
         filename_ext = file_path.suffix
+
+        try:
+            storage_backend = await self._get_user_storage_backend(user)
+        except (InvalidStorageBackendError, KeyError) as error:
+            logger.exception("Error getting storage backend.")
+
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid storage backend configuration.",
+            ) from error
+
         stored_filename = f"{filename_stem}{filename_ext}"
-        storage_backend = await self._get_user_storage_backend(user)
         stored_file_path = storage_backend.store_file(file_path, stored_filename)
 
         book_data["file_path"] = stored_file_path

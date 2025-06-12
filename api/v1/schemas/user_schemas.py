@@ -23,5 +23,12 @@ class UserLogin(BaseModel):
     password: str
 
 
+# class MinIOCredentials(BaseModel):
+#     access_key: str
+#     secret_key: str
+#     endpoint: str
+#     secure: bool = False
+
+
 class UserPreferencesUpdate(BaseModel):
-    storage_backend: Literal["filesystem", "s3", "gdrive"]
+    pass

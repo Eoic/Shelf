@@ -1,14 +1,20 @@
 import logging
 from pathlib import Path
 
+from minio import Minio
 from storage_backend import StorageBackend
 
 logger = logging.getLogger(__name__)
 
 
 class MinIOStorage(StorageBackend):
-    def __init__(self, client):
-        self.client = client
+    def __init__(self, access_key, secret_key, endpoint, secure=False):
+        self.client = Minio(
+            endpoint,
+            access_key=access_key,
+            secret_key=secret_key,
+            secure=secure,
+        )
 
     def store_file(self, src_path: Path, dst_name: str) -> str:
         bucket_name = "your-bucket-name"
@@ -21,6 +27,7 @@ class MinIOStorage(StorageBackend):
 
     def get_file(self, file_id: str) -> Path | None:
         bucket_name, object_name = file_id.split("/", 1)
+
         try:
             self.client.fget_object(bucket_name, object_name, object_name)
             return Path(object_name)
