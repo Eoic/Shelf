@@ -39,10 +39,21 @@ app.include_router(
 
 @app.get("/", tags=["Root"])
 async def read_root():
-    return {"message": f"Welcome to {settings.PROJECT_NAME}!"}
+    return {
+        "message": f"Welcome to {settings.PROJECT_NAME}!",
+        "links": {
+            "documentation": f"{settings.SERVER_PROTOCOL}://{settings.SERVER_HOST}:{settings.SERVER_PORT}/docs",
+            "redoc": f"{settings.SERVER_PROTOCOL}://{settings.SERVER_HOST}:{settings.SERVER_PORT}/redoc",
+        },
+    }
 
 
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run(
+        "main:app",
+        host=settings.SERVER_HOST,
+        port=settings.SERVER_PORT,
+        reload=True,
+    )

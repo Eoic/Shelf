@@ -8,6 +8,11 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Shelf API"
     PROJECT_VERSION: str = "0.1.0"
 
+    # Server.
+    SERVER_HOST: str = os.getenv("SERVER_HOST", "localhost")
+    SERVER_PORT: int = int(os.getenv("SERVER_PORT", 8000))
+    SERVER_PROTOCOL: str = os.getenv("SERVER_PROTOCOL", "http")
+
     # Database.
     POSTGRES_USER: str = os.getenv("POSTGRES_USER", "postgres")
     POSTGRES_PASSWORD: str = os.getenv("POSTGRES_PASSWORD", "postgres")
