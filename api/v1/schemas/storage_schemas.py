@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import BaseModel, ValidationError, field_validator
 
 
@@ -13,7 +15,7 @@ class MinIOConfig(BaseModel):
     secure: bool = False
 
 
-def parse_config(storage_type: str, value):
+def parse_config(storage_type: str, value: Any):
     match storage_type:
         case "MINIO":
             return MinIOConfig.model_validate(value)
@@ -68,3 +70,8 @@ class StorageUpdate(BaseModel):
 class StorageRead(StorageBase):
     id: int
     model_config = {"from_attributes": True}
+
+
+class PaginatedStorageResponse(BaseModel):
+    total: int
+    items: list[StorageRead]

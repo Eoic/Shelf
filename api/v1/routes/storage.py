@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Security
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.v1.schemas.storage_schemas import (
+    PaginatedStorageResponse,
     StorageCreate,
     StorageRead,
     StorageUpdate,
@@ -61,22 +62,18 @@ async def get_storage_record(
 
 @router.get(
     "/",
-    response_model=list[StorageRead],
+    response_model=PaginatedStorageResponse,
     summary="Get all storage methods for the current user",
 )
 async def get_all_storage_records(
     db: AsyncSession = Depends(get_database),
     current_user: User = Security(get_current_user),
 ):
-    storages, count = await get_all_storages(db, current_user.id)
+    items, total = await get_all_storages(db, current_user.id)
+    items = [StorageRead.model_validate(item.__dict__) for item in items]
+    total = int(total or 0)
 
-    if not storages:
-        raise HTTPException(
-            status_code=404,
-            detail="No storage methods found.",
-        )
-
-    return storages
+    return PaginatedStorageResponse(items=items, total=total)
 
 
 @router.put(
