@@ -1,5 +1,3 @@
-from typing import Literal
-
 from pydantic import BaseModel, EmailStr
 
 
@@ -21,13 +19,6 @@ class UserRead(BaseModel):
 class UserLogin(BaseModel):
     username: str
     password: str
-
-
-# class MinIOCredentials(BaseModel):
-#     access_key: str
-#     secret_key: str
-#     endpoint: str
-#     secure: bool = False
 
 
 class UserPreferencesUpdate(BaseModel):

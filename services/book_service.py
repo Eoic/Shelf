@@ -1,9 +1,8 @@
-from ast import In
 import hashlib
 import io
 import mimetypes
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 import uuid
 
 from fastapi import Depends, HTTPException
@@ -28,8 +27,8 @@ PARSER_MAPPING = {
 }
 
 STORAGE_BACKENDS = {
-    "filesystem": FileSystemStorage,
-    "minio": MinIOStorage,
+    "FILE_SYSTEM": FileSystemStorage,
+    "MINIO": MinIOStorage,
 }
 
 
@@ -56,22 +55,22 @@ class BookService:
         backend = user.preferences.get("storage_backend")
 
         match backend:
-            case "filesystem":
-                return STORAGE_BACKENDS["filesystem"]()
-            case "minio":
-                if not user.preferences.get("minio_credentials"):
-                    raise InvalidStorageBackendError(
-                        InvalidStorageBackendError.MINIO_NOT_CONFIGURED,
-                    )
+            case "FILE_SYSTEM":
+                return STORAGE_BACKENDS["FILE_SYSTEM"]()
+            case "MINIO":
+                # if not user.preferences.get("minio_credentials"):
+                #     raise InvalidStorageBackendError(
+                #         InvalidStorageBackendError.MINIO_NOT_CONFIGURED,
+                #     )
 
-                credentials = user.preferences["minio_credentials"]
+                # credentials = user.preferences["MINIO_CREDENTIALS"]
 
-                return STORAGE_BACKENDS["minio"](
-                    access_key=credentials["access_key"],
-                    secret_key=credentials["secret_key"],
-                    endpoint=credentials["endpoint"],
-                    secure=credentials.get("secure", False),
-                )
+                # return STORAGE_BACKENDS["MINIO"](
+                #     access_key=credentials["access_key"],
+                #     secret_key=credentials["secret_key"],
+                #     endpoint=credentials["endpoint"],
+                #     secure=credentials.get("secure", False),
+                # )
             case _:
                 raise InvalidStorageBackendError(
                     InvalidStorageBackendError.STORAGE_NOT_FOUND,

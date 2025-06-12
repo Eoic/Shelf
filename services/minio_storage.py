@@ -8,29 +8,34 @@ logger = logging.getLogger(__name__)
 
 
 class MinIOStorage(StorageBackend):
-    def __init__(self, access_key, secret_key, endpoint, secure=False):
+    def __init__(
+        self,
+        bucket_name: str,
+        endpoint: str,
+        access_key: str,
+        secret_key: str,
+        secure: bool,
+    ):
+        self.bucket_name = bucket_name
+
         self.client = Minio(
-            endpoint,
+            endpoint=endpoint,
             access_key=access_key,
             secret_key=secret_key,
             secure=secure,
         )
 
-    def store_file(self, src_path: Path, dst_name: str) -> str:
-        bucket_name = "your-bucket-name"
-        self.client.fput_object(bucket_name, dst_name, str(src_path))
-        return f"{bucket_name}/{dst_name}"
-
-    def delete_file(self, file_id: str):
-        bucket_name, object_name = file_id.split("/", 1)
-        self.client.remove_object(bucket_name, object_name)
-
     def get_file(self, file_id: str) -> Path | None:
-        bucket_name, object_name = file_id.split("/", 1)
-
         try:
-            self.client.fget_object(bucket_name, object_name, object_name)
-            return Path(object_name)
+            self.client.fget_object(self.bucket_name, file_id, file_id)
+            return Path(file_id)
         except Exception:
             logger.exception("Error retrieving file %s.", file_id)
             return None
+
+    def store_file(self, src_path: Path, dst_name: str) -> str:
+        self.client.fput_object(self.bucket_name, dst_name, str(src_path))
+        return f"{self.bucket_name}/{dst_name}"
+
+    def delete_file(self, file_id: str):
+        self.client.remove_object(self.bucket_name, file_id)

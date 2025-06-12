@@ -12,8 +12,10 @@ async def create_book_metadata(
 ) -> Book:
     book = Book(**book_data)
     db.add(book)
+
     await db.commit()
     await db.refresh(book)
+
     return book
 
 

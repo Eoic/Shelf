@@ -8,6 +8,14 @@ from .storage_backend import StorageBackend
 
 
 class FileSystemStorage(StorageBackend):
+    def get_file(self, file_id: str) -> Optional[Path]:
+        path = Path(file_id)
+
+        if path.exists():
+            return path
+
+        return None
+
     def store_file(self, src_path: Path, dst_name: str) -> str:
         dst_path = settings.BOOK_FILES_DIR / dst_name
         settings.BOOK_FILES_DIR.mkdir(parents=True, exist_ok=True)
@@ -19,11 +27,3 @@ class FileSystemStorage(StorageBackend):
 
         if path.exists():
             path.unlink()
-
-    def get_file(self, file_id: str) -> Optional[Path]:
-        path = Path(file_id)
-
-        if path.exists():
-            return path
-
-        return None
