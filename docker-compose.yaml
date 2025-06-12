@@ -44,11 +44,13 @@ services:
       - 9000:9000
       - 9001:9001
     volumes:
-      - ./config/minio:/root/.minio
+      - minio-config:/root/.minio
       - ./data/minio:/data
 
 volumes:
   minio-data:
+    driver: local
+  minio-config:
     driver: local
   pg-data:
     driver: local
@@ -56,3 +58,4 @@ volumes:
     driver: local
   redis-data:
     driver: local
+

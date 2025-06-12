@@ -13,6 +13,7 @@ from api.v1.schemas.book_schemas import BookInDB, BookUpdate
 from core.config import settings
 from core.logger import logger
 from database import book_crud, get_database
+from database.storage_crud import get_default_storage
 from models.user import User
 from parsers.base_parser import BookParser
 from parsers.epub_parser import EpubParser
@@ -46,31 +47,40 @@ class BookService:
         self.db = db
 
     async def _get_user_storage_backend(self, user: User | None) -> StorageBackend:
-        if not user or not hasattr(user, "preferences"):
+        if not user:
             raise HTTPException(
-                status_code=400,
-                detail="User preferences not found. Ensure user is authenticated.",
+                status_code=401,
+                detail="User not authenticated.",
             )
 
-        backend = user.preferences.get("storage_backend")
+        user_id = user.id
 
-        match backend:
+        if not isinstance(user_id, int):
+            raise HTTPException(
+                status_code=500,
+                detail="User object does not have a valid integer 'id'. Check how user is loaded.",
+            )
+
+        storage = await get_default_storage(self.db, user_id)
+
+        if not storage:
+            raise InvalidStorageBackendError(
+                InvalidStorageBackendError.STORAGE_NOT_FOUND,
+            )
+
+        match storage.storage_type:
             case "FILE_SYSTEM":
                 return STORAGE_BACKENDS["FILE_SYSTEM"]()
             case "MINIO":
-                # if not user.preferences.get("minio_credentials"):
-                #     raise InvalidStorageBackendError(
-                #         InvalidStorageBackendError.MINIO_NOT_CONFIGURED,
-                #     )
+                config = storage.config
 
-                # credentials = user.preferences["MINIO_CREDENTIALS"]
-
-                # return STORAGE_BACKENDS["MINIO"](
-                #     access_key=credentials["access_key"],
-                #     secret_key=credentials["secret_key"],
-                #     endpoint=credentials["endpoint"],
-                #     secure=credentials.get("secure", False),
-                # )
+                return STORAGE_BACKENDS["MINIO"](
+                    access_key=config["access_key"],
+                    secret_key=config["secret_key"],
+                    endpoint=config["endpoint"],
+                    bucket_name=config["bucket_name"],
+                    secure=config.get("secure", False),
+                )
             case _:
                 raise InvalidStorageBackendError(
                     InvalidStorageBackendError.STORAGE_NOT_FOUND,
@@ -163,7 +173,7 @@ class BookService:
 
             raise HTTPException(
                 status_code=400,
-                detail="Invalid storage backend configuration.",
+                detail="Failed to acquire storage backend.",
             ) from error
 
         stored_filename = f"{filename_stem}{filename_ext}"

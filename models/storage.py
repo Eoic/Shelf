@@ -1,4 +1,7 @@
-from sqlalchemy import JSON, Boolean, Column, ForeignKey, Integer, String
+from typing import Any
+
+from sqlalchemy import JSON, Boolean, ForeignKey, Integer, String
+from sqlalchemy.orm import Mapped, mapped_column
 
 from database.base import Base
 
@@ -6,17 +9,17 @@ from database.base import Base
 class Storage(Base):
     __tablename__ = "storage"
 
-    id = Column(Integer, primary_key=True, index=True)
-    config = Column(JSON, nullable=False)
-    storage_type = Column(String, nullable=False)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    config: Mapped[Any] = mapped_column(JSON, nullable=False)
+    storage_type: Mapped[str] = mapped_column(String, nullable=False)
 
-    user_id = Column(
+    user_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
     )
 
-    is_default = Column(
+    is_default: Mapped[bool] = mapped_column(
         Boolean,
         default=False,
         nullable=False,
@@ -24,4 +27,4 @@ class Storage(Base):
     )
 
     def __repr__(self):
-        return f"<Storage(id={self.id}, user_id={self.user_id}, type={self.type}, primary={self.is_default})>"
+        return f"<Storage(id={self.id}, user_id={self.user_id}, type={self.storage_type}, primary={self.is_default})>"

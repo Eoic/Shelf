@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError, field_validator
 
 
 class FileStorageConfig(BaseModel):
@@ -6,7 +6,65 @@ class FileStorageConfig(BaseModel):
 
 
 class MinIOConfig(BaseModel):
+    bucket_name: str
     access_key: str
     secret_key: str
     endpoint: str
     secure: bool = False
+
+
+def parse_config(storage_type: str, value):
+    match storage_type:
+        case "MINIO":
+            return MinIOConfig.model_validate(value)
+        case "FILE_SYSTEM":
+            return FileStorageConfig.model_validate(value)
+        case _:
+            raise ValueError
+
+
+class StorageBase(BaseModel):
+    config: MinIOConfig | FileStorageConfig
+    storage_type: str
+    is_default: bool = False
+
+    @field_validator("config", mode="before")
+    @classmethod
+    def validate_config_by_type(cls, value, info):
+        storage_type = info.data.get("storage_type")
+
+        if storage_type is not None and value is not None:
+            try:
+                return parse_config(storage_type, value)
+            except ValidationError as error:
+                raise ValueError from error
+
+        return value
+
+
+class StorageCreate(StorageBase):
+    pass
+
+
+class StorageUpdate(BaseModel):
+    config: MinIOConfig | FileStorageConfig | None = None
+    storage_type: str | None = None
+    is_default: bool | None = None
+
+    @field_validator("config", mode="before")
+    @classmethod
+    def validate_config_by_type(cls, value, info):
+        storage_type = info.data.get("storage_type")
+
+        if storage_type is not None and value is not None:
+            try:
+                return parse_config(storage_type, value)
+            except ValidationError as error:
+                raise ValueError from error
+
+        return value
+
+
+class StorageRead(StorageBase):
+    id: int
+    model_config = {"from_attributes": True}

@@ -1,3 +1,4 @@
+from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -22,6 +23,34 @@ async def get_storage_by_id(
     storage_id: int,
 ) -> Storage | None:
     result = await db.execute(select(Storage).where(Storage.id == storage_id))
+    return result.scalar_one_or_none()
+
+
+async def get_all_storages(
+    db: AsyncSession,
+    user_id: int,
+    skip: int = 0,
+    limit: int = 10,
+):
+    query = select(Storage).where(Storage.user_id == user_id).offset(skip).limit(limit)
+    result = await db.execute(query)
+    storages = result.scalars().all()
+
+    count = await db.scalar(
+        select(func.count()).select_from(Storage).where(Storage.user_id == user_id),
+    )
+
+    return storages, count
+
+
+async def get_default_storage(
+    db: AsyncSession,
+    user_id: int,
+) -> Storage | None:
+    result = await db.execute(
+        select(Storage).where(Storage.is_default & (Storage.user_id == user_id)),
+    )
+
     return result.scalar_one_or_none()
 
 

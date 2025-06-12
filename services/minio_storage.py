@@ -2,7 +2,8 @@ import logging
 from pathlib import Path
 
 from minio import Minio
-from storage_backend import StorageBackend
+
+from services.storage_backend import StorageBackend
 
 logger = logging.getLogger(__name__)
 

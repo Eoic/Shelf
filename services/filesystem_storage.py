@@ -3,8 +3,7 @@ import shutil
 from typing import Optional
 
 from core.config import settings
-
-from .storage_backend import StorageBackend
+from services.storage_backend import StorageBackend
 
 
 class FileSystemStorage(StorageBackend):
