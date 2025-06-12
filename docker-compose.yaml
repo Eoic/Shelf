@@ -33,7 +33,23 @@ services:
     ports:
       - 6379:6379
 
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    command: server /data --console-address ":9001"
+    ports:
+      - 9000:9000
+      - 9001:9001
+    volumes:
+      - ./config/minio:/root/.minio
+      - ./data/minio:/data
+
 volumes:
+  minio-data:
+    driver: local
   pg-data:
     driver: local
   pgadmin-data:

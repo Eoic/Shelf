@@ -13,6 +13,7 @@ from .base_parser import BookParser
 class EpubParser(BookParser):
     def parse_metadata(self, file_path: Path) -> dict[str, Any]:
         metadata = {}
+
         try:
             book = epub.read_epub(str(file_path))
             titles = book.get_metadata("DC", "title")
@@ -78,7 +79,6 @@ class EpubParser(BookParser):
                 metadata["tags"] = [s[0] for s in subjects]
 
             metadata["format"] = "EPUB"
-
         except Exception as e:
             logger.error(f"Error parsing EPUB metadata for {file_path}: {e}")
             metadata["parsing_error"] = str(e)

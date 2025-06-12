@@ -27,7 +27,7 @@ PARSER_MAPPING = {
 
 STORAGE_BACKENDS = {
     "filesystem": FileSystemStorage(),
-    # "minio": MinIOStorage(),
+    "minio": MinIOStorage(),
     # "gdrive": GoogleDriveStorage()
 }
 
