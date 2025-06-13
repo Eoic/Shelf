@@ -1,6 +1,5 @@
 from pathlib import Path
 import shutil
-from typing import Optional
 import uuid
 
 from fastapi import (
@@ -26,6 +25,7 @@ from core.auth import get_current_user
 from core.config import settings
 from models.user import User
 from services.book_service import BookService, get_book_service
+from services.storage_backend import StorageFileType
 
 router = APIRouter()
 
@@ -34,16 +34,16 @@ def get_base_url(request: Request) -> str:
     return str(request.base_url)
 
 
-def construct_book_display(db_book_data: dict, request: Request) -> BookDisplay:
+def construct_book_display(book_data: dict, request: Request) -> BookDisplay:
     base_url = get_base_url(request)
-    book_data = db_book_data.copy()
+    book_data = book_data.copy()
 
-    if book_data.get("cover_filename"):
-        book_data["cover_url"] = f"{base_url}api/v1/books/{book_data['id']}/cover"
-    else:
-        book_data["cover_url"] = None
+    for cover in book_data["covers"]:
+        cover["url"] = (
+            f"{base_url}api/v1/books/{book_data['id']}/cover?variant={cover['variant']}"
+        )
 
-    if book_data.get("file_path"):
+    if "file_path" in book_data:
         book_data["download_url"] = f"{base_url}api/v1/books/{book_data['id']}/download"
     else:
         book_data["download_url"] = None
@@ -61,7 +61,7 @@ async def upload_book(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     book_service: BookService = Depends(get_book_service),
-    current_user: User = Security(get_current_user),
+    user: User = Security(get_current_user),
 ):
     """
     Uploads a book, processes it (metadata, cover), and stores it.
@@ -69,7 +69,7 @@ async def upload_book(
     """
     filename = file.filename or "book.file"
     extension = filename.rsplit(".", 1)[-1].lower()
-    temp_path = Path("temp") / f"{uuid.uuid4()!s}.{extension}"
+    temp_path = settings.TEMP_FILES_DIR / f"{uuid.uuid4()!s}.{extension}"
     temp_path.parent.mkdir(parents=True, exist_ok=True)
 
     with Path.open(temp_path, "wb") as buffer:
@@ -85,7 +85,7 @@ async def upload_book(
         book_service.store_book,
         temp_path,
         filename,
-        current_user,
+        user,
     )
 
     return BookUploadQueued(
@@ -104,9 +104,9 @@ async def list_books(
     request: Request,
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),
-    search: Optional[str] = Query(None),
+    search: str | None = Query(None),
     book_service: BookService = Depends(get_book_service),
-    current_user=Security(get_current_user),
+    user=Security(get_current_user),
 ):
     """
     Lists books with pagination and optional search.
@@ -125,7 +125,7 @@ async def get_book(
     book_id: int,
     request: Request,
     book_service: BookService = Depends(get_book_service),
-    current_user=Security(get_current_user),
+    user=Security(get_current_user),
 ):
     """
     Retrieves metadata for a specific book.
@@ -148,7 +148,7 @@ async def update_book(
     book_update: BookUpdate,
     request: Request,
     book_service: BookService = Depends(get_book_service),
-    current_user=Security(get_current_user),
+    user=Security(get_current_user),
 ):
     """
     Updates metadata for a specific book.
@@ -169,15 +169,15 @@ async def update_book(
 async def delete_book(
     book_id: int,
     book_service: BookService = Depends(get_book_service),
-    current_user=Security(get_current_user),
+    user=Security(get_current_user),
 ):
     """
     Deletes an book (metadata and associated files).
     """
-    deleted = await book_service.delete_book_by_id(book_id)
+    deleted_count = await book_service.delete_book_by_id(user, book_id)
 
-    if not deleted:
-        raise HTTPException(status_code=404, detail="Book not found")
+    if deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Book not found.")
 
     return
 
@@ -189,13 +189,13 @@ async def delete_book(
 )
 async def get_book_cover(
     book_id: int,
-    variant: Optional[str] = Query(
+    variant: str | None = Query(
         None,
         description="Cover variant, e.g., 'thumbnail'",
         examples=["thumbnail", "original"],
     ),
     book_service: BookService = Depends(get_book_service),
-    current_user=Security(get_current_user),
+    user=Security(get_current_user),
 ):
     """
     Retrieves the cover image for a book.
@@ -203,20 +203,30 @@ async def get_book_cover(
     depend on the implementation and may include 'thumbnail', 'original', etc.
     """
     book = await book_service.get_book_by_id(book_id)
+    storage_backend = await book_service.get_storage_backend(user)
 
-    if book.cover_filename:
-        if variant:
-            stem = Path(book.cover_filename).stem
-            suffix = Path(book.cover_filename).suffix
-            variant_filename = f"{stem}_{variant}{suffix}"
-            cover_path = settings.COVER_FILES_DIR / variant_filename
-        else:
-            cover_path = settings.COVER_FILES_DIR / book.cover_filename
+    if variant is None:
+        variant = "original"
 
-        if cover_path.exists():
-            return FileResponse(cover_path)
+    covers = book.covers
 
-    raise HTTPException(status_code=404, detail="Cover not found.")
+    for cover in covers:
+        if cover["variant"] == variant:
+            cover_path = storage_backend.get_file(
+                user,
+                cover["filename"],
+                StorageFileType.COVER,
+            )
+
+            if cover_path and cover_path.exists():
+                return FileResponse(cover_path)
+            else:
+                continue
+
+    raise HTTPException(
+        status_code=404,
+        detail=f"Cover not found for variant '{variant}'.",
+    )
 
 
 @router.get(
@@ -226,7 +236,7 @@ async def get_book_cover(
 async def download_book_file(
     book_id: int,
     book_service: BookService = Depends(get_book_service),
-    current_user=Security(get_current_user),
+    user=Security(get_current_user),
 ):
     """
     Download the book file for a specific book.

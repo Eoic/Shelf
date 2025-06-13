@@ -1,3 +1,3 @@
-from models.book import Book
-from models.user import User
-from models.storage import Storage
+from models.book import Book  # noqa: F401
+from models.storage import Storage  # noqa: F401
+from models.user import User  # noqa: F401

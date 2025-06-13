@@ -79,4 +79,5 @@ async def delete_book_metadata(db: AsyncSession, book_id: int) -> int:
 
     await db.delete(book)
     await db.commit()
+
     return 1

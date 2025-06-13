@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     POSTGRES_PORT: int = int(os.getenv("POSTGRES_PORT", 5432))
 
     # Files.
+    TEMP_FILES_DIR: Path = Path("./storage/temp")
     BOOK_FILES_DIR: Path = Path("./storage/books")
     COVER_FILES_DIR: Path = Path("./storage/covers")
 

@@ -1,6 +1,5 @@
 import hashlib
 import io
-import mimetypes
 from pathlib import Path
 from typing import Any
 import uuid
@@ -18,9 +17,10 @@ from models.user import User
 from parsers.base_parser import BookParser
 from parsers.epub_parser import EpubParser
 from parsers.pdf_parser import PdfParser
+from services.exceptions import StorageBackendError
 from services.filesystem_storage import FileSystemStorage
 from services.minio_storage import MinIOStorage
-from services.storage_backend import StorageBackend
+from services.storage_backend import StorageBackend, StorageFileType
 
 PARSER_MAPPING = {
     "EPUB": EpubParser,
@@ -33,20 +33,99 @@ STORAGE_BACKENDS = {
 }
 
 
-class InvalidStorageBackendError(Exception):
-    MINIO_NOT_CONFIGURED = "MinIO credentials not configured in user preferences."
-    STORAGE_NOT_FOUND = "Specified storage backend not found."
-
-    def __init__(self, message: str):
-        super().__init__(message)
-        self.message = message
-
-
 class BookService:
     def __init__(self, db: AsyncSession = Depends(get_database)):
         self.db = db
 
-    async def _get_user_storage_backend(self, user: User | None) -> StorageBackend:
+    def _generate_file_hash(self, file_path: Path, hash_algo="md5") -> str:
+        hasher = hashlib.new(hash_algo)
+
+        with file_path.open("rb") as file:
+            for chunk in iter(lambda: file.read(4096), b""):
+                hasher.update(chunk)
+
+        return hasher.hexdigest()
+
+    async def _get_parser(self, file_path: Path) -> BookParser | None:
+        file_format = BookParser.get_file_format(file_path)
+
+        if not file_format:
+            logger.error(f"Could not determine file format for {file_path}.")
+            return None
+
+        parser = PARSER_MAPPING.get(file_format)
+
+        if parser:
+            return parser()
+
+        return None
+
+    async def _process_cover(
+        self,
+        user: User,
+        filename: str,
+        cover: bytes,
+    ) -> list[dict[str, Any]]:
+        covers = []
+        storage_backend = await self.get_storage_backend(user)
+
+        try:
+            image = Image.open(io.BytesIO(cover))
+        except Exception:
+            logger.exception(f"Error opening cover image for {filename}.")
+            return covers
+
+        variants = [
+            {
+                "name": "original",
+                "size": None,
+                "quality": 100,
+            },
+            {
+                "name": "thumbnail",
+                "size": (150, 200),
+                "quality": 80,
+            },
+        ]
+
+        for variant in variants:
+            try:
+                variant_image = image.copy()
+
+                if variant["size"]:
+                    variant_image.thumbnail(variant["size"])
+
+                cover_filename = f"{filename}_cover_{variant['name']}.jpg"
+                cover_path_temp = settings.TEMP_FILES_DIR / cover_filename
+
+                variant_image.convert("RGB").save(
+                    cover_path_temp,
+                    "JPEG",
+                    quality=variant["quality"],
+                )
+
+                cover_path_real = storage_backend.store_file(
+                    user,
+                    cover_path_temp,
+                    cover_filename,
+                    StorageFileType.COVER,
+                )
+
+                covers.append(
+                    {
+                        "filename": cover_filename,
+                        "path": str(cover_path_real),
+                        "variant": variant["name"],
+                    },
+                )
+            except Exception:
+                logger.exception(
+                    f"Error processing cover variant '{variant['name']}' for {filename}.",
+                )
+
+        return covers
+
+    async def get_storage_backend(self, user: User | None) -> StorageBackend:
         if not user:
             raise HTTPException(
                 status_code=401,
@@ -80,45 +159,20 @@ class BookService:
                     secure=config.get("secure", False),
                 )
             case _:
-                raise InvalidStorageBackendError(
-                    InvalidStorageBackendError.STORAGE_NOT_FOUND,
-                )
-
-    async def _get_parser(self, file_path: Path) -> BookParser | None:
-        file_format = BookParser.get_file_format(file_path)
-
-        if not file_format:
-            logger.error(f"Could not determine file format for {file_path}.")
-            return None
-
-        parser = PARSER_MAPPING.get(file_format)
-
-        if parser:
-            return parser()
-
-        return None
-
-    def _generate_file_hash(self, file_path: Path, hash_algo="md5") -> str:
-        hasher = hashlib.new(hash_algo)
-
-        with file_path.open("rb") as file:
-            for chunk in iter(lambda: file.read(4096), b""):
-                hasher.update(chunk)
-
-        return hasher.hexdigest()
+                raise StorageBackendError(StorageBackendError.NOT_FOUND)
 
     async def store_book(
         self,
-        file_path: Path,
+        source: Path,
         original_filename: str,
         user: User | None = None,
     ) -> BookInDB | None:
-        file_hash = self._generate_file_hash(file_path)
+        file_hash = self._generate_file_hash(source)
         existing_book = await book_crud.get_book_by_hash(self.db, file_hash)
 
         if existing_book:
-            if file_path.exists():
-                file_path.unlink()
+            if source.exists():
+                source.unlink()
 
             logger.warning(
                 f"Book with same content (hash: {file_hash}) already exists with ID: {getattr(existing_book, 'id', None)}.",
@@ -126,16 +180,16 @@ class BookService:
 
             return None
 
-        parser = await self._get_parser(file_path)
+        parser = await self._get_parser(source)
 
         if not parser:
-            if file_path.exists():
-                file_path.unlink()
+            if source.exists():
+                source.unlink()
 
             logger.warning(f"Unsupported file format for {original_filename}.")
             return None
 
-        metadata = parser.parse_metadata(file_path)
+        metadata = parser.parse_metadata(source)
 
         if "parsing_error" in metadata:
             logger.warning(
@@ -153,20 +207,20 @@ class BookService:
             "identifiers": metadata.get("identifiers", []),
             "format": metadata.get(
                 "format",
-                parser.get_file_format(file_path),
+                parser.get_file_format(source),
             ),
             "file_hash": file_hash,
-            "file_size_bytes": file_path.stat().st_size,
+            "file_size_bytes": source.stat().st_size,
             "original_filename": original_filename,
         }
 
         book_data = {k: v for k, v in book_data.items() if v is not None}
         filename_stem = str(uuid.uuid4())
-        filename_ext = file_path.suffix
+        filename_ext = source.suffix
 
         try:
-            storage_backend = await self._get_user_storage_backend(user)
-        except (InvalidStorageBackendError, KeyError) as error:
+            storage_backend = await self.get_storage_backend(user)
+        except (StorageBackendError, KeyError) as error:
             logger.exception("Error getting storage backend.")
 
             raise HTTPException(
@@ -175,32 +229,24 @@ class BookService:
             ) from error
 
         stored_filename = f"{filename_stem}{filename_ext}"
-        stored_file_path = storage_backend.store_file(file_path, stored_filename)
 
-        book_data["file_path"] = stored_file_path
-        cover_filename = None
-        cover_data_tuple = parser.extract_cover_image_data(Path(stored_file_path))
+        stored_file_path = storage_backend.store_file(
+            user,
+            source,
+            stored_filename,
+            StorageFileType.BOOK,
+        )
+
+        book_data["stored_filename"] = stored_filename
+        book_data["file_path"] = str(stored_file_path)
+        cover_data_tuple = parser.extract_cover_image_data(stored_file_path)
 
         if cover_data_tuple:
-            image_bytes, _original_mimetype = cover_data_tuple
-
-            try:
-                image = Image.open(io.BytesIO(image_bytes))
-                cover_filename_main = f"{filename_stem}_cover.jpg"
-                cover_path_main = settings.COVER_FILES_DIR / cover_filename_main
-                image.convert("RGB").save(cover_path_main, "JPEG", quality=100)
-                thumbnail_filename = f"{filename_stem}_cover_thumbnail.jpg"
-                thumbnail_path = settings.COVER_FILES_DIR / thumbnail_filename
-                image.thumbnail((150, 200))
-                image.convert("RGB").save(thumbnail_path, "JPEG", quality=100)
-                cover_filename = cover_filename_main
-            except Exception as error:
-                logger.error(
-                    f"Could not process/save cover for {original_filename}: {error}",
-                )
-
-        if cover_filename:
-            book_data["cover_filename"] = cover_filename
+            book_data["covers"] = await self._process_cover(
+                user,
+                filename_stem,
+                cover_data_tuple[0],
+            )
 
         created_book = await book_crud.create_book_metadata(self.db, book_data)
 
@@ -233,69 +279,33 @@ class BookService:
     ) -> dict[str, Any] | None:
         return await book_crud.update_book_metadata(self.db, book_id, book_update_data)
 
-    async def delete_book_by_id(self, book_id: int) -> int:
-        book_to_delete = await book_crud.get_book_by_id(self.db, book_id)
+    async def delete_book_by_id(self, user: User, book_id: int) -> int:
+        book = await book_crud.get_book_by_id(self.db, book_id)
 
-        if not book_to_delete:
+        if not book:
             return 0
 
-        file_path = getattr(book_to_delete, "file_path", None)
+        try:
+            storage_backend = await self.get_storage_backend(user)
+        except (StorageBackendError, KeyError):
+            logger.exception("Error getting storage backend.")
+            return 0
 
-        if file_path and isinstance(file_path, str):
-            file_to_delete = Path(file_path)
+        if book.stored_filename:
+            storage_backend.delete_file(
+                user,
+                book.stored_filename,
+                StorageFileType.BOOK,
+            )
 
-            if file_to_delete.exists():
-                file_to_delete.unlink()
-
-        cover_filename = getattr(book_to_delete, "cover_filename", None)
-
-        if cover_filename and isinstance(cover_filename, str):
-            cover_to_delete = settings.COVER_FILES_DIR / cover_filename
-
-            if cover_to_delete.exists():
-                cover_to_delete.unlink()
+        for cover in book.covers:
+            storage_backend.delete_file(
+                user,
+                cover["filename"],
+                StorageFileType.COVER,
+            )
 
         return await book_crud.delete_book_metadata(self.db, book_id)
-
-    async def get_book_cover_path(self, book_id: int) -> tuple[Path | None, str | None]:
-        book = await self.get_book_by_id(book_id)
-
-        if book and book.cover_filename:
-            cover_path = settings.COVER_FILES_DIR / book.cover_filename
-
-            if cover_path.exists():
-                media_type, _ = mimetypes.guess_type(cover_path)
-                return cover_path, media_type or "image/jpeg"
-
-        return None, None
-
-    async def get_book_file_path(
-        self,
-        book_id: int,
-    ) -> tuple[Path | None, str | None, str | None]:
-        book = await self.get_book_by_id(book_id)
-
-        if book and book.original_filename and book.format:
-            file_path = settings.BOOK_FILES_DIR / book.original_filename
-
-            if file_path.exists():
-                media_type, _ = mimetypes.guess_type(file_path)
-
-                match book.format:
-                    case "EPUB":
-                        media_type = media_type or "application/epub+zip"
-                    case "PDF":
-                        media_type = media_type or "application/pdf"
-                    case format if format and format.startswith("MOBI"):
-                        media_type = media_type or "application/x-mobipocket-book"
-
-                return (
-                    file_path,
-                    book.original_filename or "book_file",
-                    media_type,
-                )
-
-        return None, None, None
 
 
 def get_book_service(

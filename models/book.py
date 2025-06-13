@@ -41,9 +41,15 @@ class Book(Base):
         default=list,
     )
 
+    covers = mapped_column(
+        MutableList.as_mutable(ARRAY(JSON)),
+        nullable=False,
+        default=list,
+    )
+
     format: Mapped[str | None] = mapped_column(String, nullable=True)
-    cover_filename: Mapped[str | None] = mapped_column(String, nullable=True)
     original_filename: Mapped[str | None] = mapped_column(String, nullable=True)
+    stored_filename: Mapped[str | None] = mapped_column(String, nullable=True)
     file_hash: Mapped[str | None] = mapped_column(String, nullable=True, unique=True)
     file_path: Mapped[str | None] = mapped_column(String, nullable=True)
     file_size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)

@@ -54,6 +54,7 @@ class EpubParser(BookParser):
                         identifiers.append({"type": scheme, "value": value})
                 else:
                     identifiers.append({"type": scheme, "value": value})
+
             if identifiers:
                 metadata["identifiers"] = identifiers
 

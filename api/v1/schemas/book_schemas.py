@@ -50,9 +50,9 @@ class BookDisplay(BookBase):
     file_path: Optional[str] = None
     file_size_bytes: Optional[int] = None
     download_url: Optional[HttpUrl] = None
-    cover_url: Optional[HttpUrl] = None
-    cover_filename: Optional[str] = None
+    covers: list[dict[str, str]] = []
     original_filename: Optional[str] = None
+    stored_filename: Optional[str] = None
     uploaded_at: datetime
     modified_at: Optional[datetime] = None
 
@@ -62,7 +62,7 @@ class BookDisplay(BookBase):
 
 
 class BookInDB(BookDisplay):
-    cover_filename: Optional[str] = None
+    covers: list[dict[str, str]] = []
 
 
 class PaginatedBookResponse(BaseModel):
