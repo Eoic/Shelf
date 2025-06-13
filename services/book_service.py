@@ -64,9 +64,7 @@ class BookService:
         storage = await get_default_storage(self.db, user_id)
 
         if not storage:
-            raise InvalidStorageBackendError(
-                InvalidStorageBackendError.STORAGE_NOT_FOUND,
-            )
+            return STORAGE_BACKENDS["FILE_SYSTEM"]()
 
         match storage.storage_type:
             case "FILE_SYSTEM":
