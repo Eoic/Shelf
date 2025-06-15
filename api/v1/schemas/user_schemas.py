@@ -1,6 +1,10 @@
 from pydantic import BaseModel, EmailStr
 
 
+class Preferences(BaseModel):
+    theme: str | None = None  # Example placeholder field
+
+
 class UserCreate(BaseModel):
     username: str
     email: EmailStr
@@ -10,7 +14,7 @@ class UserCreate(BaseModel):
 class UserRead(BaseModel):
     username: str
     email: EmailStr
-    preferences: dict
+    preferences: Preferences
 
     class Config:
         from_attributes = True
@@ -21,5 +25,8 @@ class UserLogin(BaseModel):
     password: str
 
 
-class UserPreferencesUpdate(BaseModel):
-    pass
+class UserPreferencesUpdate(Preferences):
+    class Config:
+        from_attributes = True
+        extra = "forbid"
+        validate_by_name = True
