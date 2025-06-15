@@ -189,6 +189,7 @@ async def delete_book(
 )
 async def get_book_cover(
     book_id: int,
+    background_tasks: BackgroundTasks,
     variant: str | None = Query(
         None,
         description="Cover variant, e.g., 'thumbnail'",
@@ -208,9 +209,7 @@ async def get_book_cover(
     if variant is None:
         variant = "original"
 
-    covers = book.covers
-
-    for cover in covers:
+    for cover in book.covers:
         if cover["variant"] == variant:
             cover_path = storage_backend.get_file(
                 user,
@@ -219,7 +218,8 @@ async def get_book_cover(
             )
 
             if cover_path and cover_path.exists():
-                return FileResponse(cover_path)
+                background_tasks.add_task(cover_path.unlink)
+                return FileResponse(cover_path, background=background_tasks)
             else:
                 continue
 

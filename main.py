@@ -52,6 +52,7 @@ async def read_root():
         "links": {
             "documentation": f"{settings.SERVER_PROTOCOL}://{settings.SERVER_HOST}:{settings.SERVER_PORT}/docs",
             "redoc": f"{settings.SERVER_PROTOCOL}://{settings.SERVER_HOST}:{settings.SERVER_PORT}/redoc",
+            "minio": f"{settings.SERVER_PROTOCOL}://{settings.SERVER_HOST}:9000",
         },
     }
 

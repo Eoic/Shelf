@@ -123,6 +123,12 @@ class BookService:
                     f"Error processing cover variant '{variant['name']}' for {filename}.",
                 )
 
+        for cover_file in covers:
+            cover_path_temp = settings.TEMP_FILES_DIR / cover_file["filename"]
+
+            if cover_path_temp.exists():
+                cover_path_temp.unlink()
+
         return covers
 
     async def get_storage_backend(self, user: User | None) -> StorageBackend:
@@ -163,16 +169,16 @@ class BookService:
 
     async def store_book(
         self,
-        source: Path,
+        source_path: Path,
         original_filename: str,
         user: User | None = None,
     ) -> BookInDB | None:
-        file_hash = self._generate_file_hash(source)
+        file_hash = self._generate_file_hash(source_path)
         existing_book = await book_crud.get_book_by_hash(self.db, file_hash)
 
         if existing_book:
-            if source.exists():
-                source.unlink()
+            if source_path.exists():
+                source_path.unlink()
 
             logger.warning(
                 f"Book with same content (hash: {file_hash}) already exists with ID: {getattr(existing_book, 'id', None)}.",
@@ -180,16 +186,16 @@ class BookService:
 
             return None
 
-        parser = await self._get_parser(source)
+        parser = await self._get_parser(source_path)
 
         if not parser:
-            if source.exists():
-                source.unlink()
+            if source_path.exists():
+                source_path.unlink()
 
             logger.warning(f"Unsupported file format for {original_filename}.")
             return None
 
-        metadata = parser.parse_metadata(source)
+        metadata = parser.parse_metadata(source_path)
 
         if "parsing_error" in metadata:
             logger.warning(
@@ -207,16 +213,14 @@ class BookService:
             "identifiers": metadata.get("identifiers", []),
             "format": metadata.get(
                 "format",
-                parser.get_file_format(source),
+                parser.get_file_format(source_path),
             ),
             "file_hash": file_hash,
-            "file_size_bytes": source.stat().st_size,
+            "file_size_bytes": source_path.stat().st_size,
             "original_filename": original_filename,
         }
 
         book_data = {k: v for k, v in book_data.items() if v is not None}
-        filename_stem = str(uuid.uuid4())
-        filename_ext = source.suffix
 
         try:
             storage_backend = await self.get_storage_backend(user)
@@ -227,28 +231,38 @@ class BookService:
                 status_code=400,
                 detail="Failed to acquire storage backend.",
             ) from error
+        except Exception as error:
+            logger.exception("Unexpected error while getting storage backend.")
 
-        stored_filename = f"{filename_stem}{filename_ext}"
+            raise HTTPException(
+                status_code=500,
+                detail="Unexpected error while getting storage backend.",
+            ) from error
+
+        stored_filename = f"{source_path.stem}{source_path.suffix}"
 
         stored_file_path = storage_backend.store_file(
             user,
-            source,
+            source_path,
             stored_filename,
             StorageFileType.BOOK,
         )
 
         book_data["stored_filename"] = stored_filename
         book_data["file_path"] = str(stored_file_path)
-        cover_data_tuple = parser.extract_cover_image_data(stored_file_path)
+        cover_data_tuple = parser.extract_cover_image_data(source_path)
 
         if cover_data_tuple:
             book_data["covers"] = await self._process_cover(
                 user,
-                filename_stem,
+                source_path.stem,
                 cover_data_tuple[0],
             )
 
         created_book = await book_crud.create_book_metadata(self.db, book_data)
+
+        if source_path.exists():
+            source_path.unlink()
 
         return BookInDB.model_validate(created_book)
 

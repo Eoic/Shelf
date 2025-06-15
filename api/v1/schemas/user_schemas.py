@@ -2,7 +2,7 @@ from pydantic import BaseModel, EmailStr
 
 
 class Preferences(BaseModel):
-    theme: str | None = None  # Example placeholder field
+    theme: str | None = None
 
 
 class UserCreate(BaseModel):

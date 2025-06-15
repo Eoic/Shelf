@@ -28,7 +28,6 @@ def parse_config(storage_type: str, value: Any):
 class StorageBase(BaseModel):
     config: MinIOConfig | FileStorageConfig
     storage_type: str
-    is_default: bool = False
 
     @field_validator("config", mode="before")
     @classmethod
@@ -48,28 +47,15 @@ class StorageCreate(StorageBase):
     pass
 
 
+class StorageRead(StorageBase):
+    id: int
+    is_default: bool = False
+    model_config = {"from_attributes": True}
+
+
 class StorageUpdate(BaseModel):
     config: MinIOConfig | FileStorageConfig | None = None
     storage_type: str | None = None
-    is_default: bool | None = None
-
-    @field_validator("config", mode="before")
-    @classmethod
-    def validate_config_by_type(cls, value, info):
-        storage_type = info.data.get("storage_type")
-
-        if storage_type is not None and value is not None:
-            try:
-                return parse_config(storage_type, value)
-            except ValidationError as error:
-                raise ValueError from error
-
-        return value
-
-
-class StorageRead(StorageBase):
-    id: int
-    model_config = {"from_attributes": True}
 
 
 class PaginatedStorageResponse(BaseModel):
