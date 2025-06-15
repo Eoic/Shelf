@@ -4,11 +4,9 @@ A service for uploading, processing, and managing book files.
 ## Features
 
 - REST API for book management.
-- Book metadata parsing (PDF, EPUB, MOBI) and management.
-- Cover image extraction and storage.
-- Metadata storage in a relational database (PostgreSQL).
-- File and cover storage in the local file system.
-- Asynchronous processing for book uploads (Celery).
+- Book metadata parsing (e.g. PDF, EPUB, MOBI) and management..
+- Book file and cover storage that supports various storage methods (e.g. MinIO, Google Drive).
+- Asynchronous processing for book uploads.
 
 ## Setup
 
@@ -47,7 +45,7 @@ uvicorn main:app --reload
 The API will be available at http://127.0.0.1:8000.
 Interactive API documentation (Swagger UI) will be at http://127.0.0.1:8000/docs and an alternative documentation (ReDoc) is available at http://127.0.0.1:8000/redoc.
 
-## Running Celery Worker
+## Running Celery worker
 
 To process background tasks (such as book uploads and metadata extraction), you need to run a Celery worker. Make sure your Redis and PostgreSQL services are running and your environment variables are set (see `.env.example`).
 
@@ -63,7 +61,7 @@ celery -A core.celery.celery_app worker --loglevel=info
 celery -A core.celery.celery_app worker --loglevel=info -Q default
 ```
 
-## Database & Migrations
+## Database and migrations
 
 This project uses **PostgreSQL** as the main database via SQLAlchemy (async) and Alembic for migrations.
 
