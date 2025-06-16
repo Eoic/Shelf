@@ -23,8 +23,10 @@ from api.v1.schemas.book_schemas import (
 )
 from core.auth import get_current_user
 from core.config import settings
+from models import storage
 from models.user import User
 from services.book_service import BookService, get_book_service
+from services.filesystem_storage import FileSystemStorage
 from services.storage_backend import StorageFileType
 
 router = APIRouter()
@@ -218,7 +220,9 @@ async def get_book_cover(
             )
 
             if cover_path and cover_path.exists():
-                background_tasks.add_task(cover_path.unlink)
+                if not isinstance(storage_backend, FileSystemStorage):
+                    background_tasks.add_task(cover_path.unlink)
+
                 return FileResponse(cover_path, background=background_tasks)
             else:
                 continue
