@@ -26,8 +26,8 @@ def parse_config(storage_type: str, value: Any):
 
 
 class StorageBase(BaseModel):
-    config: MinIOConfig | FileStorageConfig
     storage_type: str
+    config: MinIOConfig | FileStorageConfig
 
     @field_validator("config", mode="before")
     @classmethod
@@ -48,7 +48,7 @@ class StorageCreate(StorageBase):
 
 
 class StorageRead(StorageBase):
-    id: int
+    id: str
     is_default: bool = False
     model_config = {"from_attributes": True}
 

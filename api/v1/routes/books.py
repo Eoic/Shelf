@@ -122,7 +122,7 @@ async def list_books(
     summary="Get book metadata",
 )
 async def get_book(
-    book_id: int,
+    book_id: str,
     request: Request,
     book_service: BookService = Depends(get_book_service),
     user=Security(get_current_user),
@@ -144,7 +144,7 @@ async def get_book(
     summary="Update book metadata",
 )
 async def update_book(
-    book_id: int,
+    book_id: str,
     book_update: BookUpdate,
     request: Request,
     book_service: BookService = Depends(get_book_service),
@@ -167,7 +167,7 @@ async def update_book(
     summary="Delete a book",
 )
 async def delete_book(
-    book_id: int,
+    book_id: str,
     book_service: BookService = Depends(get_book_service),
     user=Security(get_current_user),
 ):
@@ -188,7 +188,7 @@ async def delete_book(
     summary="Get book cover (either original or thumbnail)",
 )
 async def get_book_cover(
-    book_id: int,
+    book_id: str,
     background_tasks: BackgroundTasks,
     variant: str | None = Query(
         None,
@@ -234,7 +234,7 @@ async def get_book_cover(
     summary="Download book file",
 )
 async def download_book_file(
-    book_id: int,
+    book_id: str,
     book_service: BookService = Depends(get_book_service),
     user=Security(get_current_user),
 ):

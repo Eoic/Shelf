@@ -45,7 +45,7 @@ async def create_storage_record(
     summary="Get a storage method by ID",
 )
 async def get_storage_record(
-    storage_id: int,
+    storage_id: str,
     db: AsyncSession = Depends(get_database),
     current_user: User = Security(get_current_user),
 ):
@@ -82,7 +82,7 @@ async def get_all_storage_records(
     summary="Update a storage method by ID",
 )
 async def update_storage_record(
-    storage_id: int,
+    storage_id: str,
     storage_update: StorageUpdate,
     db: AsyncSession = Depends(get_database),
     current_user: User = Security(get_current_user),
@@ -110,7 +110,7 @@ async def update_storage_record(
     summary="Delete a storage method by ID",
 )
 async def delete_storage_record(
-    storage_id: int,
+    storage_id: str,
     db: AsyncSession = Depends(get_database),
     current_user: User = Security(get_current_user),
 ):
@@ -128,7 +128,7 @@ async def delete_storage_record(
     summary="Set a storage method as default",
 )
 async def set_default_storage(
-    storage_id: int,
+    storage_id: str,
     db: AsyncSession = Depends(get_database),
     current_user: User = Security(get_current_user),
 ):

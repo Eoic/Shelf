@@ -11,6 +11,7 @@ from core.auth import (
     get_current_user,
     get_password_hash,
 )
+from core.crockford import generate_crockford_id
 from database import get_database
 from models.user import User
 
@@ -57,6 +58,7 @@ async def register_user(
         raise HTTPException(status_code=400, detail="Username is already taken.")
 
     user = User(
+        id=generate_crockford_id(),
         username=user_create.username,
         email=user_create.email,
         password=get_password_hash(user_create.password),

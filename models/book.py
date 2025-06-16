@@ -12,7 +12,7 @@ from database.base import Base
 class Book(Base):
     __tablename__ = "books"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
     title: Mapped[str | None] = mapped_column(String, nullable=True)
 
     authors: Mapped[list[Any] | None] = mapped_column(

@@ -45,7 +45,7 @@ class BookUploadQueued(BaseModel):
 
 
 class BookDisplay(BookBase):
-    id: int
+    id: str
     file_hash: Optional[str] = None
     file_path: Optional[str] = None
     file_size_bytes: Optional[int] = None

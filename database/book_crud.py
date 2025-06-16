@@ -21,7 +21,7 @@ async def create_book_metadata(
 
 async def get_book_by_id(
     db: AsyncSession,
-    book_id: int,
+    book_id: str,
 ) -> Book | None:
     result = await db.execute(select(Book).where(Book.id == book_id))
     return result.scalar_one_or_none()
@@ -55,7 +55,7 @@ async def get_all_books(
 
 async def update_book_metadata(
     db: AsyncSession,
-    book_id: int,
+    book_id: str,
     book_update_data: BookUpdate,
 ) -> Book | None:
     book = await get_book_by_id(db, book_id)
@@ -71,7 +71,7 @@ async def update_book_metadata(
     return book
 
 
-async def delete_book_metadata(db: AsyncSession, book_id: int) -> int:
+async def delete_book_metadata(db: AsyncSession, book_id: str) -> int:
     book = await get_book_by_id(db, book_id)
 
     if not book:

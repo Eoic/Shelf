@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.v1.schemas.book_schemas import BookInDB, BookUpdate
 from core.config import settings
+from core.crockford import generate_crockford_id
 from core.logger import logger
 from database import book_crud, get_database
 from database.storage_crud import get_default_storage
@@ -138,13 +139,7 @@ class BookService:
             )
 
         user_id = user.id
-
-        if not isinstance(user_id, int):
-            raise HTTPException(
-                status_code=500,
-                detail="User object does not have a valid integer 'id'. Check how user is loaded.",
-            )
-
+        # Crockford IDs are strings, so no need to check for int
         storage = await get_default_storage(self.db, user_id)
 
         if not storage:
@@ -221,6 +216,8 @@ class BookService:
 
         book_data = {k: v for k, v in book_data.items() if v is not None}
 
+        book_data["id"] = generate_crockford_id()
+
         try:
             storage_backend = await self.get_storage_backend(user)
         except (StorageBackendError, KeyError) as error:
@@ -277,7 +274,7 @@ class BookService:
             BookInDB.model_validate(book.__dict__).model_dump() for book in books
         ], int(count or 0)
 
-    async def get_book_by_id(self, book_id: int):
+    async def get_book_by_id(self, book_id: str):
         book = await book_crud.get_book_by_id(self.db, book_id)
 
         if not book:
@@ -287,12 +284,12 @@ class BookService:
 
     async def update_book_by_id(
         self,
-        book_id: int,
+        book_id: str,
         book_update_data: BookUpdate,
     ) -> dict[str, Any] | None:
         return await book_crud.update_book_metadata(self.db, book_id, book_update_data)
 
-    async def delete_book_by_id(self, user: User, book_id: int) -> int:
+    async def delete_book_by_id(self, user: User, book_id: str) -> int:
         book = await book_crud.get_book_by_id(self.db, book_id)
 
         if not book:

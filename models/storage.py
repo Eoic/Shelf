@@ -1,6 +1,6 @@
 from typing import Any
 
-from sqlalchemy import JSON, Boolean, ForeignKey, Integer, String
+from sqlalchemy import JSON, Boolean, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database.base import Base
@@ -9,12 +9,12 @@ from database.base import Base
 class Storage(Base):
     __tablename__ = "storage"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
     config: Mapped[Any] = mapped_column(JSON, nullable=False)
     storage_type: Mapped[str] = mapped_column(String, nullable=False)
 
-    user_id: Mapped[int] = mapped_column(
-        Integer,
+    user_id: Mapped[str] = mapped_column(
+        String,
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
     )
