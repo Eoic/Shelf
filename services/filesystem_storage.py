@@ -35,7 +35,7 @@ class FileSystemStorage(StorageBackend):
         parent_path = self._get_parent_path(filetype)
         target_path = parent_path / str(user.id) / filename
         target_path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.move(str(source), str(target_path))
+        shutil.copyfile(str(source), str(target_path))
         return target_path
 
     def delete_file(
