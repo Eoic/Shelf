@@ -120,3 +120,34 @@ async def delete_storage_record(
         raise HTTPException(status_code=404, detail="Storage not found.")
 
     await delete_storage(db, storage_id)
+
+
+@router.put(
+    "/{storage_id}/set-default",
+    response_model=StorageRead,
+    summary="Set a storage method as default",
+)
+async def set_default_storage(
+    storage_id: int,
+    db: AsyncSession = Depends(get_database),
+    current_user: User = Security(get_current_user),
+):
+    storage = await get_storage_by_id(db, storage_id)
+
+    if storage is None or storage.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Storage not found.")
+
+    items, _ = await get_all_storages(db, current_user.id, skip=0, limit=1000)
+
+    for item in items:
+        if item.is_default:
+            item.is_default = False
+            db.add(item)
+
+    storage.is_default = True
+    db.add(storage)
+
+    await db.commit()
+    await db.refresh(storage)
+
+    return StorageRead.model_validate(storage.__dict__)

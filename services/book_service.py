@@ -2,7 +2,6 @@ import hashlib
 import io
 from pathlib import Path
 from typing import Any
-import uuid
 
 from fastapi import Depends, HTTPException
 from PIL import Image
