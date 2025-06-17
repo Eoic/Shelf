@@ -63,7 +63,8 @@ class BookService:
     async def _process_cover(
         self,
         user: User,
-        filename: str,
+        book_hash: str,
+        book_temp_path: Path,
         cover: bytes,
     ) -> list[dict[str, Any]]:
         covers = []
@@ -72,7 +73,7 @@ class BookService:
         try:
             image = Image.open(io.BytesIO(cover))
         except Exception:
-            logger.exception(f"Error opening cover image for {filename}.")
+            logger.exception(f"Error opening cover image for {book_hash}.")
             return covers
 
         variants = [
@@ -95,18 +96,18 @@ class BookService:
                 if variant["size"]:
                     variant_image.thumbnail(variant["size"])
 
-                cover_filename = f"{filename}_cover_{variant['name']}.jpg"
-                cover_path_temp = settings.TEMP_FILES_DIR / cover_filename
+                cover_filename = f"{variant['name']}.jpg"
 
                 variant_image.convert("RGB").save(
-                    cover_path_temp,
+                    book_temp_path.parent / cover_filename,
                     "JPEG",
                     quality=variant["quality"],
                 )
 
                 cover_path_real = storage_backend.store_file(
                     user,
-                    cover_path_temp,
+                    book_temp_path.parent / cover_filename,
+                    book_hash,
                     cover_filename,
                     StorageFileType.COVER,
                 )
@@ -120,11 +121,11 @@ class BookService:
                 )
             except Exception:
                 logger.exception(
-                    f"Error processing cover variant '{variant['name']}' for {filename}.",
+                    f"Error processing cover variant '{variant['name']}' for {book_hash}.",
                 )
 
         for cover_file in covers:
-            cover_path_temp = settings.TEMP_FILES_DIR / cover_file["filename"]
+            cover_path_temp = book_temp_path.parent / cover_file["filename"]
 
             if cover_path_temp.exists():
                 cover_path_temp.unlink()
@@ -139,7 +140,6 @@ class BookService:
             )
 
         user_id = user.id
-        # Crockford IDs are strings, so no need to check for int
         storage = await get_default_storage(self.db, user_id)
 
         if not storage:
@@ -163,16 +163,16 @@ class BookService:
 
     async def store_book(
         self,
-        source_path: Path,
+        source_file_path: Path,
         original_filename: str,
         user: User | None = None,
     ) -> BookInDB | None:
-        file_hash = self._generate_file_hash(source_path)
+        file_hash = self._generate_file_hash(source_file_path)
         existing_book = await book_crud.get_book_by_hash(self.db, file_hash)
 
         if existing_book:
-            if source_path.exists():
-                source_path.unlink()
+            if source_file_path.exists():
+                source_file_path.unlink()
 
             logger.warning(
                 f"Book with same content (hash: {file_hash}) already exists with ID: {getattr(existing_book, 'id', None)}.",
@@ -180,16 +180,16 @@ class BookService:
 
             return None
 
-        parser = await self._get_parser(source_path)
+        parser = await self._get_parser(source_file_path)
 
         if not parser:
-            if source_path.exists():
-                source_path.unlink()
+            if source_file_path.exists():
+                source_file_path.unlink()
 
             logger.warning(f"Unsupported file format for {original_filename}.")
             return None
 
-        metadata = parser.parse_metadata(source_path)
+        metadata = parser.parse_metadata(source_file_path)
 
         if "parsing_error" in metadata:
             logger.warning(
@@ -207,10 +207,10 @@ class BookService:
             "identifiers": metadata.get("identifiers", []),
             "format": metadata.get(
                 "format",
-                parser.get_file_format(source_path),
+                parser.get_file_format(source_file_path),
             ),
             "file_hash": file_hash,
-            "file_size_bytes": source_path.stat().st_size,
+            "file_size_bytes": source_file_path.stat().st_size,
             "original_filename": original_filename,
         }
 
@@ -235,30 +235,32 @@ class BookService:
                 detail="Unexpected error while getting storage backend.",
             ) from error
 
-        stored_filename = f"{source_path.stem}{source_path.suffix}"
+        stored_filename = f"{source_file_path.stem}{source_file_path.suffix}"
 
         stored_file_path = storage_backend.store_file(
             user,
-            source_path,
+            source_file_path,
+            file_hash,
             stored_filename,
             StorageFileType.BOOK,
         )
 
         book_data["stored_filename"] = stored_filename
         book_data["file_path"] = str(stored_file_path)
-        cover_data_tuple = parser.extract_cover_image_data(source_path)
+        cover_data_tuple = parser.extract_cover_image_data(source_file_path)
 
         if cover_data_tuple:
             book_data["covers"] = await self._process_cover(
                 user,
-                source_path.stem,
+                file_hash,
+                source_file_path,
                 cover_data_tuple[0],
             )
 
         created_book = await book_crud.create_book_metadata(self.db, book_data)
 
-        if source_path.exists():
-            source_path.unlink()
+        if source_file_path.exists():
+            source_file_path.unlink()
 
         return BookInDB.model_validate(created_book)
 
@@ -301,9 +303,16 @@ class BookService:
             logger.exception("Error getting storage backend.")
             return 0
 
+        book_filename = book.stored_filename
+
+        if not book_filename:
+            logger.warning(f"Book {book_id} has no stored filename.")
+            return 0
+
         if book.stored_filename:
             storage_backend.delete_file(
                 user,
+                Path(book_filename).stem,
                 book.stored_filename,
                 StorageFileType.BOOK,
             )
@@ -311,6 +320,7 @@ class BookService:
         for cover in book.covers:
             storage_backend.delete_file(
                 user,
+                Path(book_filename).stem,
                 cover["filename"],
                 StorageFileType.COVER,
             )

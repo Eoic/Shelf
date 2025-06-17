@@ -28,13 +28,17 @@ class MinIOStorage(StorageBackend):
             secure=secure,
         )
 
+    def get_prepared_book_dir(self, user: User, book_dir: str) -> Path:
+        return Path(f"books/{user.id}/{book_dir}")
+
     def get_file(
         self,
         user: User,
+        book_dir: str,
         filename: str,
         filetype: StorageFileType,
     ) -> Path | None:
-        object_name = self._get_object_name(user, filename, filetype)
+        object_name = self._get_object_name(user, book_dir, filename, filetype)
         local_path = settings.TEMP_FILES_DIR / filename
 
         try:
@@ -49,10 +53,11 @@ class MinIOStorage(StorageBackend):
         self,
         user: User,
         source: Path,
+        book_dir: str,
         filename: str,
         filetype: StorageFileType,
     ) -> Path:
-        object_name = self._get_object_name(user, filename, filetype)
+        object_name = self._get_object_name(user, book_dir, filename, filetype)
 
         if not self.client.bucket_exists(self.bucket_name):
             self.client.make_bucket(self.bucket_name)
@@ -63,10 +68,11 @@ class MinIOStorage(StorageBackend):
     def delete_file(
         self,
         user: User,
+        book_dir: str,
         filename: str,
         filetype: StorageFileType,
     ) -> bool:
-        object_name = self._get_object_name(user, filename, filetype)
+        object_name = self._get_object_name(user, book_dir, filename, filetype)
 
         try:
             self.client.remove_object(self.bucket_name, object_name)
@@ -79,15 +85,13 @@ class MinIOStorage(StorageBackend):
     def _get_object_name(
         self,
         user: User,
+        book_dir: str,
         filename: str,
         filetype: StorageFileType,
     ) -> str:
-        match filetype:
-            case StorageFileType.BOOK:
-                prefix = "books"
-            case StorageFileType.COVER:
-                prefix = "covers"
-            case _:
-                raise ValueError
+        prefix = f"books/{user.id}/{book_dir}"
 
-        return f"{prefix}/{user.id}/{filename}"
+        if filetype == StorageFileType.BOOK or filetype == StorageFileType.COVER:
+            return f"{prefix}/{filename}"
+
+        raise ValueError()

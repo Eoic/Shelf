@@ -16,7 +16,6 @@ async def lifespan(app: FastAPI):
     from pathlib import Path
 
     Path(settings.BOOK_FILES_DIR).mkdir(parents=True, exist_ok=True)
-    Path(settings.COVER_FILES_DIR).mkdir(parents=True, exist_ok=True)
     yield
 
 

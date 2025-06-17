@@ -23,7 +23,6 @@ class Settings(BaseSettings):
     # Files.
     TEMP_FILES_DIR: Path = Path("./storage/temp")
     BOOK_FILES_DIR: Path = Path("./storage/books")
-    COVER_FILES_DIR: Path = Path("./storage/covers")
 
     # Celery.
     CELERY_BROKER_URL: str | None = None
@@ -44,4 +43,3 @@ class Settings(BaseSettings):
 
 settings = Settings()
 settings.BOOK_FILES_DIR.mkdir(parents=True, exist_ok=True)
-settings.COVER_FILES_DIR.mkdir(parents=True, exist_ok=True)

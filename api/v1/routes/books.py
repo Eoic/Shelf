@@ -23,7 +23,6 @@ from api.v1.schemas.book_schemas import (
 )
 from core.auth import get_current_user
 from core.config import settings
-from models import storage
 from models.user import User
 from services.book_service import BookService, get_book_service
 from services.filesystem_storage import FileSystemStorage
@@ -71,10 +70,10 @@ async def upload_book(
     """
     filename = file.filename or "book.file"
     extension = filename.rsplit(".", 1)[-1].lower()
-    temp_path = settings.TEMP_FILES_DIR / f"{uuid.uuid4()!s}.{extension}"
-    temp_path.parent.mkdir(parents=True, exist_ok=True)
+    temp_file_path = settings.TEMP_FILES_DIR / f"{uuid.uuid4()!s}.{extension}"
+    temp_file_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with Path.open(temp_path, "wb") as buffer:
+    with Path.open(temp_file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
     if not filename:
@@ -85,7 +84,7 @@ async def upload_book(
 
     background_tasks.add_task(
         book_service.store_book,
-        temp_path,
+        temp_file_path,
         filename,
         user,
     )
@@ -93,7 +92,7 @@ async def upload_book(
     return BookUploadQueued(
         message="Book upload queued",
         filename=filename,
-        temp_path=str(temp_path),
+        temp_path=str(temp_file_path),
     )
 
 
@@ -212,9 +211,10 @@ async def get_book_cover(
         variant = "original"
 
     for cover in book.covers:
-        if cover["variant"] == variant:
+        if cover["variant"] == variant and book.stored_filename:
             cover_path = storage_backend.get_file(
                 user,
+                Path(book.stored_filename).stem,
                 cover["filename"],
                 StorageFileType.COVER,
             )

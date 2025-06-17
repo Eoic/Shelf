@@ -15,10 +15,11 @@ class StorageBackend(ABC):
     def get_file(
         self,
         user: User,
+        book_dir: str,
         filename: str,
         filetype: StorageFileType,
     ) -> Path | None:
-        """Retrieve a file by its storage identifier."""
+        """Retrieve a file by its storage identifier (book directory and optional subfilename)."""
         pass
 
     @abstractmethod
@@ -26,6 +27,7 @@ class StorageBackend(ABC):
         self,
         user: User,
         source: Path,
+        book_dir: str,
         filename: str,
         filetype: StorageFileType,
     ) -> Path:
@@ -36,8 +38,16 @@ class StorageBackend(ABC):
     def delete_file(
         self,
         user: User,
+        book_dir: str,
         filename: str,
         filetype: StorageFileType,
     ) -> bool:
         """Delete a file by its storage identifier and type."""
+        pass
+
+    @abstractmethod
+    def get_prepared_book_dir(self, user: User, book_dir: str) -> Path:
+        """
+        Return the book directory for the given user and book_dir, and ensure it exists.
+        """
         pass
