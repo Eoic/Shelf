@@ -56,14 +56,19 @@ async def get_all_books(
 async def update_book_metadata(
     db: AsyncSession,
     book_id: str,
-    book_update_data: BookUpdate,
+    book_update_data: BookUpdate | dict,
 ) -> Book | None:
     book = await get_book_by_id(db, book_id)
 
     if not book:
         return None
 
-    for field, value in book_update_data.model_dump(exclude_unset=True).items():
+    if isinstance(book_update_data, dict):
+        update_data = book_update_data
+    else:
+        update_data = book_update_data.model_dump(exclude_unset=True)
+
+    for field, value in update_data.items():
         setattr(book, field, value)
 
     await db.commit()

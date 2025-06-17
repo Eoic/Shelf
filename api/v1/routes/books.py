@@ -79,18 +79,24 @@ async def upload_book(
     if not filename:
         raise HTTPException(
             status_code=400,
-            detail="Filename is required for book upload",
+            detail="Filename is required for book upload.",
         )
+
+    # Detach user.id before any async DB operations to avoid DetachedInstanceError
+    user_id = user.id if hasattr(user, "id") else user
+
+    book_id = await book_service.create_queued_book(filename, user_id, temp_file_path)
 
     background_tasks.add_task(
         book_service.store_book,
         temp_file_path,
         filename,
-        user,
+        user_id,  # pass user id, not the user object
+        book_id,
     )
 
     return BookUploadQueued(
-        message="Book upload queued",
+        message="Book is being processed.",
         filename=filename,
         temp_path=str(temp_file_path),
     )
@@ -214,7 +220,7 @@ async def get_book_cover(
         if cover["variant"] == variant and book.stored_filename:
             cover_path = storage_backend.get_file(
                 user,
-                Path(book.stored_filename).stem,
+                book.file_hash,
                 cover["filename"],
                 StorageFileType.COVER,
             )
@@ -258,3 +264,18 @@ async def download_book_file(
         )
 
     raise HTTPException(status_code=404, detail="File not found.")
+
+
+@router.get(
+    "/{book_id}/status",
+    summary="Get book processing status",
+)
+async def get_book_status(
+    book_id: str,
+    book_service: BookService = Depends(get_book_service),
+    user=Security(get_current_user),
+):
+    book = await book_service.get_book_by_id(book_id)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found.")
+    return {"status": book.status, "error": book.processing_error}

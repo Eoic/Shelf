@@ -35,7 +35,13 @@ class BookCreate(BookBase):
 
 
 class BookUpdate(BookBase):
-    pass
+    status: str
+    covers: Optional[list[dict[str, str]]] = None
+    original_filename: Optional[str] = None
+    stored_filename: Optional[str] = None
+    file_path: Optional[str] = None
+    file_hash: Optional[str] = None
+    file_size_bytes: Optional[int] = None
 
 
 class BookUploadQueued(BaseModel):
@@ -55,6 +61,8 @@ class BookDisplay(BookBase):
     stored_filename: Optional[str] = None
     uploaded_at: datetime
     modified_at: Optional[datetime] = None
+    status: str
+    processing_error: Optional[str] = None
 
     class Config:
         populate_by_name = True
