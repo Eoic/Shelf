@@ -325,11 +325,18 @@ class BookService:
 
     async def get_books(
         self,
+        user_id: str,
         skip: int,
         limit: int,
         search_query: str | None,
     ) -> tuple[list[dict[str, Any]], int]:
-        books, count = await book_crud.get_all_books(self.db, skip, limit, search_query)
+        books, count = await book_crud.get_all_books(
+            self.db,
+            user_id,
+            skip,
+            limit,
+            search_query,
+        )
 
         return [
             BookInDB.model_validate(book.__dict__).model_dump() for book in books

@@ -118,7 +118,7 @@ async def list_books(
     """
     Lists books with pagination and optional search.
     """
-    books, total = await book_service.get_books(skip, limit, search)
+    books, total = await book_service.get_books(user.id, skip, limit, search)
     items = [construct_book_display(book, request) for book in books]
     return PaginatedBookResponse(items=items, total=total)
 
@@ -139,7 +139,7 @@ async def get_book(
     """
     book = await book_service.get_book_by_id(book_id)
 
-    if not book:
+    if not book or book.user_id != user.id:
         raise HTTPException(status_code=404, detail="Book not found.")
 
     return construct_book_display(book.__dict__, request)

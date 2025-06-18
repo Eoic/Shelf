@@ -70,6 +70,7 @@ class BookDisplay(BookBase):
 
 
 class BookInDB(BookDisplay):
+    user_id: str
     covers: list[dict[str, str]] = []
 
 

@@ -37,18 +37,21 @@ async def get_book_by_hash(
 
 async def get_all_books(
     db: AsyncSession,
+    user_id: str,
     skip: int = 0,
     limit: int = 10,
     search_query: str | None = None,
 ):
-    query = select(Book)
+    query = select(Book).where(Book.user_id == user_id)
 
     if search_query:
         query = query.where(Book.title.ilike(f"%{search_query}%"))
 
     result = await db.execute(query.offset(skip).limit(limit))
     books = result.scalars().all()
-    count = await db.scalar(select(func.count()).select_from(Book))
+    count = await db.scalar(
+        select(func.count()).select_from(Book).where(Book.user_id == user_id)
+    )
 
     return books, count
 
