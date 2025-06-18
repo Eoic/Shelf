@@ -25,8 +25,8 @@ from core.auth import get_current_user
 from core.config import settings
 from models.user import User
 from services.book_service import BookService, get_book_service
-from services.filesystem_storage import FileSystemStorage
-from services.storage_backend import StorageFileType
+from services.storage.filesystem_storage import FileSystemStorage
+from services.storage.storage_backend import StorageFileType
 
 router = APIRouter()
 
@@ -82,24 +82,24 @@ async def upload_book(
             detail="Filename is required for book upload.",
         )
 
-    # Detach user.id before any async DB operations to avoid DetachedInstanceError
-    user_id = user.id if hasattr(user, "id") else user
+    user_id = user.id
+    book = await book_service.create_queued_book(filename, user_id, temp_file_path)
 
-    book_id = await book_service.create_queued_book(filename, user_id, temp_file_path)
+    if not book:
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to create book metadata.",
+        )
 
     background_tasks.add_task(
         book_service.store_book,
         temp_file_path,
         filename,
-        user_id,  # pass user id, not the user object
-        book_id,
+        user_id,
+        book.id,
     )
 
-    return BookUploadQueued(
-        message="Book is being processed.",
-        filename=filename,
-        temp_path=str(temp_file_path),
-    )
+    return book
 
 
 @router.get(
@@ -276,6 +276,8 @@ async def get_book_status(
     user=Security(get_current_user),
 ):
     book = await book_service.get_book_by_id(book_id)
+
     if not book:
         raise HTTPException(status_code=404, detail="Book not found.")
+
     return {"status": book.status, "error": book.processing_error}

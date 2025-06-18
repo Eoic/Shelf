@@ -45,9 +45,9 @@ class BookUpdate(BookBase):
 
 
 class BookUploadQueued(BaseModel):
-    message: str
-    filename: str
-    temp_path: str
+    id: str
+    title: str
+    status: str
 
 
 class BookDisplay(BookBase):

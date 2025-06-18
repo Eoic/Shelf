@@ -28,7 +28,7 @@ app = FastAPI(
 app.include_router(
     books_v1_router.router,
     prefix="/api/v1/books",
-    tags=["Shelf v1"],
+    tags=["Books v1"],
 )
 
 app.include_router(

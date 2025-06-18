@@ -3,7 +3,7 @@ import shutil
 
 from core.config import settings
 from models.user import User
-from services.storage_backend import StorageBackend, StorageFileType
+from services.storage.storage_backend import StorageBackend, StorageFileType
 
 
 class FileSystemStorage(StorageBackend):

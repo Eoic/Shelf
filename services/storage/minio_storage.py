@@ -5,7 +5,7 @@ from minio import Minio
 
 from core.config import settings
 from models.user import User
-from services.storage_backend import StorageBackend, StorageFileType
+from services.storage.storage_backend import StorageBackend, StorageFileType
 
 logger = logging.getLogger(__name__)
 

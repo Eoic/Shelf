@@ -17,10 +17,10 @@ from models.user import User
 from parsers.base_parser import BookParser
 from parsers.epub_parser import EpubParser
 from parsers.pdf_parser import PdfParser
-from services.exceptions import StorageBackendError
-from services.filesystem_storage import FileSystemStorage
-from services.minio_storage import MinIOStorage
-from services.storage_backend import StorageBackend, StorageFileType
+from services.storage.exceptions import StorageBackendError
+from services.storage.filesystem_storage import FileSystemStorage
+from services.storage.minio_storage import MinIOStorage
+from services.storage.storage_backend import StorageBackend, StorageFileType
 
 PARSER_MAPPING = {
     "EPUB": EpubParser,
@@ -36,41 +36,6 @@ STORAGE_BACKENDS = {
 class BookService:
     def __init__(self, db: AsyncSession):
         self.db = db
-
-    @staticmethod
-    async def create_queued_book(
-        original_filename: str,
-        user_id: str | None,
-        temp_file_path: Path,
-    ) -> str:
-        async with async_session() as db:
-            book_id = generate_crockford_id()
-            book = Book(
-                id=book_id,
-                title=original_filename,
-                original_filename=original_filename,
-                status="queued",
-                covers=[],
-                file_path=str(temp_file_path),
-            )
-            db.add(book)
-            await db.commit()
-            await db.refresh(book)
-            return book_id
-
-    async def update_book_status(
-        self,
-        book_id: str,
-        status: str,
-        error: str | None = None,
-    ):
-        book = await book_crud.get_book_by_id(self.db, book_id)
-
-        if book:
-            book.status = status
-            book.processing_error = error
-            await self.db.commit()
-            await self.db.refresh(book)
 
     def _generate_file_hash(self, file_path: Path, hash_algo="md5") -> str:
         hasher = hashlib.new(hash_algo)
@@ -167,42 +132,6 @@ class BookService:
 
         return covers
 
-    async def get_storage_backend(self, user: User | str | None) -> StorageBackend:
-        if not user:
-            raise HTTPException(
-                status_code=401,
-                detail="User not authenticated.",
-            )
-
-        if isinstance(user, str):
-            user_obj = await self.db.get(User, user)
-
-            if not user_obj:
-                raise HTTPException(status_code=404, detail="User not found.")
-
-            user = user_obj
-
-        user_id = user.id
-        storage = await get_default_storage(self.db, user_id)
-
-        if not storage:
-            return STORAGE_BACKENDS["FILE_SYSTEM"]()
-
-        match storage.storage_type:
-            case "FILE_SYSTEM":
-                return STORAGE_BACKENDS["FILE_SYSTEM"]()
-            case "MINIO":
-                config = storage.config
-                return STORAGE_BACKENDS["MINIO"](
-                    access_key=config["access_key"],
-                    secret_key=config["secret_key"],
-                    endpoint=config["endpoint"],
-                    bucket_name=config["bucket_name"],
-                    secure=config.get("secure", False),
-                )
-            case _:
-                raise StorageBackendError(StorageBackendError.NOT_FOUND)
-
     @staticmethod
     async def store_book(
         source_file_path: Path,
@@ -222,13 +151,36 @@ class BookService:
             if user_id:
                 user = await db.get(User, user_id)
 
-            service = BookService(db)
-            return await service._store_book_impl(
+            return await BookService(db)._store_book_impl(
                 source_file_path,
                 original_filename,
                 book_id,
                 user,
             )
+
+    @staticmethod
+    async def create_queued_book(
+        original_filename: str,
+        user_id: str | None,
+        temp_file_path: Path,
+    ) -> Book:
+        async with async_session() as db:
+            book_id = generate_crockford_id()
+
+            book = Book(
+                id=book_id,
+                user_id=user_id,
+                title=original_filename,
+                original_filename=original_filename,
+                status="queued",
+                covers=[],
+                file_path=str(temp_file_path),
+            )
+
+            db.add(book)
+            await db.commit()
+            await db.refresh(book)
+            return book
 
     async def _store_book_impl(
         self,
@@ -398,6 +350,20 @@ class BookService:
     ) -> dict[str, Any] | None:
         return await book_crud.update_book_metadata(self.db, book_id, book_update_data)
 
+    async def update_book_status(
+        self,
+        book_id: str,
+        status: str,
+        error: str | None = None,
+    ):
+        book = await book_crud.get_book_by_id(self.db, book_id)
+
+        if book:
+            book.status = status
+            book.processing_error = error
+            await self.db.commit()
+            await self.db.refresh(book)
+
     async def delete_book_by_id(self, user: User, book_id: str) -> int:
         book = await book_crud.get_book_by_id(self.db, book_id)
 
@@ -430,6 +396,42 @@ class BookService:
                 )
 
         return await book_crud.delete_book_metadata(self.db, book_id)
+
+    async def get_storage_backend(self, user: User | str | None) -> StorageBackend:
+        if not user:
+            raise HTTPException(
+                status_code=401,
+                detail="User not authenticated.",
+            )
+
+        if isinstance(user, str):
+            user_obj = await self.db.get(User, user)
+
+            if not user_obj:
+                raise HTTPException(status_code=404, detail="User not found.")
+
+            user = user_obj
+
+        user_id = user.id
+        storage = await get_default_storage(self.db, user_id)
+
+        if not storage:
+            return STORAGE_BACKENDS["FILE_SYSTEM"]()
+
+        match storage.storage_type:
+            case "FILE_SYSTEM":
+                return STORAGE_BACKENDS["FILE_SYSTEM"]()
+            case "MINIO":
+                config = storage.config
+                return STORAGE_BACKENDS["MINIO"](
+                    access_key=config["access_key"],
+                    secret_key=config["secret_key"],
+                    endpoint=config["endpoint"],
+                    bucket_name=config["bucket_name"],
+                    secure=config.get("secure", False),
+                )
+            case _:
+                raise StorageBackendError(StorageBackendError.NOT_FOUND)
 
 
 def get_book_service(
