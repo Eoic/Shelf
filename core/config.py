@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     # Files.
     TEMP_FILES_DIR: Path = Path("./storage/temp")
     BOOK_FILES_DIR: Path = Path("./storage/books")
+    MINIO_SERVER_HOST: str = os.getenv("MINIO_SERVER_HOST", "localhost")
+    MINIO_SERVER_PORT: int = int(os.getenv("MINIO_SERVER_PORT", 9000))
+    MINIO_SERVER_PROTOCOL: str = os.getenv("MINIO_SERVER_PROTOCOL", "http")
 
     # Celery.
     CELERY_BROKER_URL: str | None = None
