@@ -84,11 +84,16 @@ alembic upgrade head
 - Alembic configuration is in `alembic.ini` and migration scripts are in the `alembic/versions/` directory.
 
 ## TODO
-- [ ] Implement MOBI/AZW3 parsing (potentially with Calibre CLI tools).
-- [ ] More robust error handling and logging.
-- [ ] User authentication and authorization.
-- [ ] Full-text search capabilities.
-- [ ] Implement task status polling if using true async processing for uploads.
-- [ ] Refine cover extraction heuristics.
-- [ ] Implement file renaming strategy after DB ID generation.
-- [ ] Add comprehensive tests.
+- Support more file formats (e.g. CBZ, CBR).
+- Allow full-text search (PostgreSQL or Elasticsearch).
+- Allow creating text highlights and notes.
+- Update metadata from external sources (e.g. Google Books, Open Library).
+- Reading progress tracking and bookmarks.
+- Recommendations based on reading history.
+- Search by metadata and fuzzy search. 
+- Webhooks and event system for real-time updates.
+- Statistics tracking (e.g. reading time, books/pages read).
+- Bulk uploading and processing.
+- Conversion between formats (e.g. PDF to EPUB).
+- Bulk file and metadata export.
+- Audit logs.
