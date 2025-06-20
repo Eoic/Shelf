@@ -213,6 +213,9 @@ async def get_book_cover(
     book = await book_service.get_book_by_id(book_id)
     storage_backend = await book_service.get_storage_backend(user)
 
+    if book.user_id != user.id or not book.file_hash:
+        raise HTTPException(status_code=404, detail="Book does not exist.")
+
     if variant is None:
         variant = "original"
 

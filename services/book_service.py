@@ -373,7 +373,7 @@ class BookService:
     async def delete_book_by_id(self, user: User, book_id: str) -> int:
         book = await book_crud.get_book_by_id(self.db, book_id)
 
-        if not book:
+        if not book or book.user_id != user.id:
             return 0
 
         try:
