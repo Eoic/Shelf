@@ -181,7 +181,9 @@ storage/covers/*
 !storage/books/.gitkeep
 !storage/covers/.gitkeep
 temp/*
+storage/temp/*
 !temp/.gitkeep
+!storate/temp/.gitkeep
 
 # Database
 *.sqlite3

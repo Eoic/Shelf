@@ -245,6 +245,7 @@ async def get_book_cover(
 )
 async def download_book_file(
     book_id: str,
+    background_tasks: BackgroundTasks,
     book_service: BookService = Depends(get_book_service),
     user=Security(get_current_user),
 ):
@@ -253,17 +254,38 @@ async def download_book_file(
     """
     book = await book_service.get_book_by_id(book_id)
 
-    if book.file_path:
-        return FileResponse(
-            book.file_path,
-            filename=book.original_filename or book.file_hash,
-            media_type=book.format or "application/octet-stream",
-            headers={
-                "Content-Disposition": f'attachment; filename="{book.original_filename or book.file_hash}"',
-            },
-        )
+    if (
+        not book
+        or book.user_id != user.id
+        or not book.file_path
+        or not book.file_hash
+        or not book.stored_filename
+    ):
+        raise HTTPException(status_code=404, detail="File not found.")
 
-    raise HTTPException(status_code=404, detail="File not found.")
+    storage_backend = await book_service.get_storage_backend(user)
+
+    book_path = storage_backend.get_file(
+        user,
+        book.file_hash,
+        book.stored_filename,
+        StorageFileType.BOOK,
+    )
+
+    if not book_path or not book_path.exists():
+        raise HTTPException(status_code=404, detail="File not found.")
+
+    if not isinstance(storage_backend, FileSystemStorage):
+        background_tasks.add_task(book_path.unlink)
+
+    return FileResponse(
+        book_path,
+        filename=book.original_filename or book.stored_filename,
+        media_type=book.format or "application/octet-stream",
+        headers={
+            "Content-Disposition": f'attachment; filename="{book.original_filename or book.stored_filename}"',
+        },
+    )
 
 
 @router.get(
