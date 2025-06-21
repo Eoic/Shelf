@@ -26,6 +26,7 @@ def parse_config(storage_type: str, value: Any):
 
 
 class StorageBase(BaseModel):
+    title: str | None
     storage_type: str
     config: MinIOConfig | FileStorageConfig
 
@@ -54,6 +55,7 @@ class StorageRead(StorageBase):
 
 
 class StorageUpdate(BaseModel):
+    title: str | None = None
     config: MinIOConfig | FileStorageConfig | None = None
     storage_type: str | None = None
 

@@ -10,6 +10,13 @@ class Storage(Base):
     __tablename__ = "storage"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
+
+    title: Mapped[str] = mapped_column(
+        String,
+        default="Untitled storage",
+        nullable=True,
+    )
+
     config: Mapped[Any] = mapped_column(JSON, nullable=False)
     storage_type: Mapped[str] = mapped_column(String, nullable=False)
 
