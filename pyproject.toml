@@ -70,7 +70,7 @@ Homepage = "https://github.com/Eoic/Shelf"
 Repository = "https://github.com/Eoic/Shelf"
 
 [tool.setuptools]
-packages = ["api", "config", "core", "database", "models", "parsers", "services", "tests"]
+packages = ["api", "config", "core", "database", "models", "parsers", "services"]
 
 [tool.pytest.ini_options]
 python_files = "test_*.py tests_*.py"

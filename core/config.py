@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     POSTGRES_DB: str = os.getenv("POSTGRES_DB", "shelf")
     POSTGRES_HOST: str = os.getenv("POSTGRES_HOST", "localhost")
     POSTGRES_PORT: int = int(os.getenv("POSTGRES_PORT", 5432))
+    TEST_POSTGRES_DB: str = os.getenv("TEST_POSTGRES_DB", "shelf_test")
+    TEST_POSTGRES_HOST: str = os.getenv("TEST_POSTGRES_HOST", "localhost")
+    TEST_POSTGRES_PORT: int = int(os.getenv("TEST_POSTGRES_PORT", 5433))
 
     # Files.
     TEMP_FILES_DIR: Path = Path("./storage/temp")
@@ -37,6 +40,10 @@ class Settings(BaseSettings):
     @property
     def database_url(self) -> str:
         return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+
+    @property
+    def test_database_url(self) -> str:
+        return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.TEST_POSTGRES_HOST}:{self.TEST_POSTGRES_PORT}/{self.TEST_POSTGRES_DB}"
 
     class Config:
         env_file = ".env"

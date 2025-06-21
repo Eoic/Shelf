@@ -11,6 +11,18 @@ services:
     volumes:
       - pg-data:/var/lib/postgresql/data
 
+  postgres-test:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: shelf_test
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - 5433:5432
+    volumes:
+      - pg-test-data:/var/lib/postgresql/data
+
   pgadmin:
     image: dpage/pgadmin4:latest
     restart: unless-stopped
@@ -57,5 +69,7 @@ volumes:
   pgadmin-data:
     driver: local
   redis-data:
+    driver: local
+  pg-test-data:
     driver: local
 

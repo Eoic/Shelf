@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -12,9 +13,7 @@ load_dotenv()
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    from pathlib import Path
-
+async def lifespan(_app: FastAPI):
     Path(settings.BOOK_FILES_DIR).mkdir(parents=True, exist_ok=True)
     yield
 

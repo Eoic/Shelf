@@ -1,11 +1,13 @@
-import sys
 import pathlib
+import sys
+import asyncio
 
 sys.path.append(str((pathlib.Path(__file__).parent.parent.parent).resolve()))
 
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from alembic import context
 from database.base import Base
@@ -46,26 +48,45 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    """Run migrations in 'online' mode.
+    """Run migrations in 'online' mode, supporting async engine.
 
     In this scenario we need to create an Engine
     and associate a connection with the context.
 
     """
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
+    config_section = config.get_section(config.config_ini_section, {})
+    url = config_section.get("sqlalchemy.url") or config.get_main_option("sqlalchemy.url")
 
-    with connectable.connect() as connection:
-        context.configure(
-            connection=connection,
-            target_metadata=target_metadata,
+    if url and url.startswith("postgresql+asyncpg"):
+        # Use async engine for async DB URLs
+        connectable = create_async_engine(url, poolclass=pool.NullPool)
+
+        async def run_async_migrations():
+            async with connectable.connect() as connection:
+                await connection.run_sync(
+                    lambda sync_conn: context.configure(
+                        connection=sync_conn,
+                        target_metadata=target_metadata,
+                    )
+                )
+                async with connection.begin():
+                    await connection.run_sync(context.run_migrations)
+
+        asyncio.run(run_async_migrations())
+    else:
+        # Fallback to sync engine for sync DB URLs
+        connectable = engine_from_config(
+            config_section,
+            prefix="sqlalchemy.",
+            poolclass=pool.NullPool,
         )
-
-        with context.begin_transaction():
-            context.run_migrations()
+        with connectable.connect() as connection:
+            context.configure(
+                connection=connection,
+                target_metadata=target_metadata,
+            )
+            with context.begin_transaction():
+                context.run_migrations()
 
 
 if context.is_offline_mode():
