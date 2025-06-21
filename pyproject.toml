@@ -1,7 +1,5 @@
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
-# build-backend = "setuptools.build_meta"
-# backend-path = ["."]
 
 [project]
 name = "shelf"
@@ -9,7 +7,6 @@ version = "0.1.0"
 description = "A FastAPI application for uploading, processing, and managing book files."
 readme = "README.md"
 requires-python = ">=3.9"
-license = {text = "MIT"}
 authors = [
     {name = "Karolis Strazdas", email = "karolis.strazdas@protonmail.com"},
 ]
@@ -18,7 +15,6 @@ keywords = ["book", "parser", "fastapi", "api", "metadata", "digital-library"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
@@ -38,7 +34,7 @@ dependencies = [
     "pydantic>=2.0",
     "pydantic-settings",
     "python-multipart",
-    "booklib>=0.18",
+    "ebooklib>=0.18",
     "pymupdf",
     "celery>=5.0",
     "redis>=4.0",
@@ -52,6 +48,9 @@ dependencies = [
     "sqlalchemy[asyncio]",
     "databases",
     "alembic",
+    "pytest",
+    "httpx",
+    "bs4",
 ]
 
 [project.optional-dependencies]
@@ -70,11 +69,8 @@ dev = [
 Homepage = "https://github.com/Eoic/Shelf"
 Repository = "https://github.com/Eoic/Shelf"
 
-
-
-
 [tool.setuptools]
-packages = ["api", "core", "db", "models", "parsers", "services", "tests"] 
+packages = ["api", "config", "core", "database", "models", "parsers", "services", "tests"]
 
 [tool.pytest.ini_options]
 python_files = "test_*.py tests_*.py"
