@@ -328,6 +328,9 @@ class BookService:
         skip: int,
         limit: int,
         search_query: str | None,
+        tags: list[str] | None = None,
+        sort_by: str = "title",
+        sort_order: str = "asc",
     ) -> tuple[list[dict[str, Any]], int]:
         books, count = await book_crud.get_all_books(
             self.db,
@@ -335,17 +338,28 @@ class BookService:
             skip,
             limit,
             search_query,
+            tags,
+            sort_by,
+            sort_order,
         )
 
         return [
             BookInDB.model_validate(book.__dict__).model_dump() for book in books
         ], int(count or 0)
 
-    async def get_book_by_id(self, book_id: str):
+    async def get_book_by_id(
+        self,
+        book_id: str,
+        user_id: str | None = None,
+        raw: bool = False,
+    ) -> Book | BookInDB:
         book = await book_crud.get_book_by_id(self.db, book_id)
 
-        if not book:
+        if not book or (user_id and book.user_id != user_id):
             raise HTTPException(status_code=404, detail="Book not found.")
+
+        if raw:
+            return book
 
         return BookInDB.model_validate(book.__dict__)
 
@@ -353,7 +367,13 @@ class BookService:
         self,
         book_id: str,
         book_update_data: BookUpdate,
-    ) -> dict[str, Any] | None:
+        user_id: str,
+    ) -> Book | None:
+        book = await book_crud.get_book_by_id(self.db, book_id)
+
+        if not book or book.user_id != user_id:
+            return None
+
         return await book_crud.update_book_metadata(self.db, book_id, book_update_data)
 
     async def update_book_status(

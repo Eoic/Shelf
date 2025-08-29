@@ -30,3 +30,7 @@ class UserPreferencesUpdate(Preferences):
         from_attributes = True
         extra = "forbid"
         validate_by_name = True
+
+
+class APIKeyResponse(BaseModel):
+    api_key: str

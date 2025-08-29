@@ -41,17 +41,37 @@ async def get_all_books(
     skip: int = 0,
     limit: int = 10,
     search_query: str | None = None,
+    tags: list[str] | None = None,
+    sort_by: str = "title",
+    sort_order: str = "asc",
 ):
     query = select(Book).where(Book.user_id == user_id)
 
     if search_query:
         query = query.where(Book.title.ilike(f"%{search_query}%"))
 
-    result = await db.execute(query.offset(skip).limit(limit))
+    if tags:
+        for tag in tags:
+            query = query.where(Book.tags.any(tag))
+
+    sort_column = getattr(Book, sort_by, Book.title)
+    if sort_order.lower() == "desc":
+        sort_column = sort_column.desc()
+    else:
+        sort_column = sort_column.asc()
+
+    result = await db.execute(query.order_by(sort_column).offset(skip).limit(limit))
     books = result.scalars().all()
-    count = await db.scalar(
-        select(func.count()).select_from(Book).where(Book.user_id == user_id),
-    )
+
+    count_query = select(func.count()).select_from(Book).where(Book.user_id == user_id)
+
+    if search_query:
+        count_query = count_query.where(Book.title.ilike(f"%{search_query}%"))
+    if tags:
+        for tag in tags:
+            count_query = count_query.where(Book.tags.any(tag))
+
+    count = await db.scalar(count_query)
 
     return books, count
 

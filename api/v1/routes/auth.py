@@ -1,10 +1,18 @@
+import hashlib
+import secrets
+
 from fastapi import APIRouter, Depends, HTTPException, Security, status
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy import update
+from sqlalchemy import or_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from api.v1.schemas.user_schemas import UserCreate, UserPreferencesUpdate, UserRead
+from api.v1.schemas.user_schemas import (
+    APIKeyResponse,
+    UserCreate,
+    UserPreferencesUpdate,
+    UserRead,
+)
 from core.auth import (
     authenticate_user,
     create_access_token,
@@ -52,10 +60,20 @@ async def register_user(
     user_create: UserCreate,
     db: AsyncSession = Depends(get_database),
 ):
-    result = await db.execute(select(User).where(User.username == user_create.username))
+    result = await db.execute(
+        select(User).where(
+            or_(
+                User.username == user_create.username,
+                User.email == user_create.email,
+            ),
+        ),
+    )
 
     if result.scalars().first():
-        raise HTTPException(status_code=400, detail="Username is already taken.")
+        raise HTTPException(
+            status_code=400,
+            detail="Username or email is already taken.",
+        )
 
     user = User(
         id=generate_crockford_id(),
@@ -76,10 +94,7 @@ async def register_user(
     response_model=UserRead,
     summary="Get current user details",
 )
-async def get_user_preferences(
-    db: AsyncSession = Depends(get_database),
-    current_user: User = Security(get_current_user),
-):
+async def read_current_user(current_user: User = Security(get_current_user)):
     return current_user
 
 
@@ -99,7 +114,7 @@ async def update_user_preferences(
 
     new_preferences = {
         **current_preferences,
-        **preferences_update.model_dump(),
+        **preferences_update.model_dump(exclude_unset=True),
     }
 
     query = (
@@ -114,3 +129,19 @@ async def update_user_preferences(
     await db.refresh(current_user)
 
     return current_user
+
+
+@router.post(
+    "/api-key",
+    response_model=APIKeyResponse,
+    summary="Generate a new API key",
+)
+async def generate_api_key(
+    db: AsyncSession = Depends(get_database),
+    current_user: User = Security(get_current_user),
+):
+    key = secrets.token_urlsafe(32)
+    hashed = hashlib.sha256(key.encode()).hexdigest()
+    current_user.api_key_hash = hashed
+    await db.commit()
+    return APIKeyResponse(api_key=key)
