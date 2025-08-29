@@ -23,12 +23,12 @@ async def get_shelves(db: AsyncSession, user_id: str) -> list[Shelf]:
 
 
 async def get_shelf(
-    db: AsyncSession, shelf_id: str, user_id: str,
+    db: AsyncSession,
+    shelf_id: str,
+    user_id: str,
 ) -> Shelf | None:
     result = await db.execute(
-        select(Shelf)
-        .where(Shelf.id == shelf_id, Shelf.user_id == user_id)
-        .options(selectinload(Shelf.books)),
+        select(Shelf).where(Shelf.id == shelf_id, Shelf.user_id == user_id).options(selectinload(Shelf.books)),
     )
     return result.scalars().first()
 

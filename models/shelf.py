@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any, TYPE_CHECKING
 
 from sqlalchemy import Column, DateTime, ForeignKey, String, Table
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -27,9 +27,13 @@ class Shelf(Base):
     created_at: Mapped[Any] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[Any] = mapped_column(DateTime, onupdate=func.now(), nullable=True)
     user_id: Mapped[str] = mapped_column(
-        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False,
+        String,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
     )
 
     books: Mapped[list[Book]] = relationship(
-        "Book", secondary="shelf_books", back_populates="shelves",
+        "Book",
+        secondary="shelf_books",
+        back_populates="shelves",
     )

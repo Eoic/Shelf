@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any, TYPE_CHECKING
 
 from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import ARRAY, JSON
@@ -81,5 +81,7 @@ class Book(Base):
     )
 
     shelves: Mapped[list[Shelf]] = relationship(
-        "Shelf", secondary="shelf_books", back_populates="books",
+        "Shelf",
+        secondary="shelf_books",
+        back_populates="books",
     )
