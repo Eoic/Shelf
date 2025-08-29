@@ -50,7 +50,7 @@ async def get_all_books(
     result = await db.execute(query.offset(skip).limit(limit))
     books = result.scalars().all()
     count = await db.scalar(
-        select(func.count()).select_from(Book).where(Book.user_id == user_id)
+        select(func.count()).select_from(Book).where(Book.user_id == user_id),
     )
 
     return books, count

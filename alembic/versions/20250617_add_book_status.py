@@ -5,8 +5,9 @@ Revises: 983f05a87193
 Create Date: 2025-06-17
 """
 
-from alembic import op
 import sqlalchemy as sa
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "20250617_add_book_status"
