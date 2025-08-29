@@ -92,9 +92,7 @@ class EpubParser(BookParser):
             cover_item = None
 
             for item in book.get_items():
-                if item.get_type() == ebooklib.ITEM_IMAGE and "cover-image" in (
-                    item.properties or []
-                ):
+                if item.get_type() == ebooklib.ITEM_IMAGE and "cover-image" in (item.properties or []):
                     cover_item = item
                     break
 
@@ -102,10 +100,7 @@ class EpubParser(BookParser):
                 for meta_info in book.get_metadata("OPF", "meta"):
                     if isinstance(meta_info, tuple) and len(meta_info) > 1:
                         attributes = meta_info[1]
-                        if (
-                            isinstance(attributes, dict)
-                            and attributes.get("name") == "cover"
-                        ):
+                        if isinstance(attributes, dict) and attributes.get("name") == "cover":
                             cover_id = attributes.get("content")
 
                             if cover_id:
@@ -116,10 +111,7 @@ class EpubParser(BookParser):
                 common_cover_names = ["cover.jpg", "cover.jpeg", "cover.png"]
 
                 for item in book.get_items_of_type(ebooklib.ITEM_IMAGE):
-                    if (
-                        item.get_name().lower() in common_cover_names
-                        or "cover" in item.get_name().lower()
-                    ):
+                    if item.get_name().lower() in common_cover_names or "cover" in item.get_name().lower():
                         cover_item = item
                         break
 

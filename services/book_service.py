@@ -343,9 +343,7 @@ class BookService:
             sort_order,
         )
 
-        return [
-            BookInDB.model_validate(book.__dict__).model_dump() for book in books
-        ], int(count or 0)
+        return [BookInDB.model_validate(book.__dict__).model_dump() for book in books], int(count or 0)
 
     async def get_book_by_id(
         self,

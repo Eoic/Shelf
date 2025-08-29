@@ -40,9 +40,7 @@ def construct_book_display(book_data: dict, request: Request) -> BookDisplay:
     book_data = book_data.copy()
 
     for cover in book_data["covers"]:
-        cover["url"] = (
-            f"{base_url}api/v1/books/{book_data['id']}/cover?variant={cover['variant']}"
-        )
+        cover["url"] = f"{base_url}api/v1/books/{book_data['id']}/cover?variant={cover['variant']}"
 
     if "file_path" in book_data:
         book_data["download_url"] = f"{base_url}api/v1/books/{book_data['id']}/download"

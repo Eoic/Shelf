@@ -20,9 +20,7 @@ class PdfParser(BookParser):
                 metadata["title"] = meta.get("title")
 
                 metadata["authors"] = [
-                    {"name": author}
-                    for author in meta.get("author", "").split(";")
-                    if author.strip()
+                    {"name": author} for author in meta.get("author", "").split(";") if author.strip()
                 ]
 
                 metadata["publisher"] = meta.get("producer")
@@ -32,15 +30,9 @@ class PdfParser(BookParser):
                     from contextlib import suppress
 
                     with suppress(Exception):
-                        metadata["publication_date"] = (
-                            f"{pub_date[2:6]}-{pub_date[6:8]}-{pub_date[8:10]}"
-                        )
+                        metadata["publication_date"] = f"{pub_date[2:6]}-{pub_date[6:8]}-{pub_date[8:10]}"
 
-                metadata["tags"] = [
-                    tag.strip()
-                    for tag in meta.get("keywords", "").split(",")
-                    if tag.strip()
-                ]
+                metadata["tags"] = [tag.strip() for tag in meta.get("keywords", "").split(",") if tag.strip()]
 
             metadata["format"] = "PDF"
             metadata["page_count"] = doc.page_count
