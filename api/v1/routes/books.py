@@ -112,13 +112,18 @@ async def list_books(
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),
     search: str | None = Query(None),
+    tags: list[str] | None = Query(None),
+    sort_by: str = Query("title", pattern="^(title|uploaded_at)$"),
+    sort_order: str = Query("asc", pattern="^(asc|desc)$"),
     book_service: BookService = Depends(get_book_service),
-    user=Security(get_current_user),
+    user: User = Security(get_current_user),
 ):
     """
-    Lists books with pagination and optional search.
+    Lists books with pagination, optional search, filtering and sorting.
     """
-    books, total = await book_service.get_books(user.id, skip, limit, search)
+    books, total = await book_service.get_books(
+        user.id, skip, limit, search, tags, sort_by, sort_order,
+    )
     items = [construct_book_display(book, request) for book in books]
     return PaginatedBookResponse(items=items, total=total)
 
@@ -132,15 +137,12 @@ async def get_book(
     book_id: str,
     request: Request,
     book_service: BookService = Depends(get_book_service),
-    user=Security(get_current_user),
+    user: User = Security(get_current_user),
 ):
     """
     Retrieves metadata for a specific book.
     """
-    book = await book_service.get_book_by_id(book_id)
-
-    if not book or book.user_id != user.id:
-        raise HTTPException(status_code=404, detail="Book not found.")
+    book = await book_service.get_book_by_id(book_id, user.id)
 
     return construct_book_display(book.__dict__, request)
 
@@ -155,15 +157,15 @@ async def update_book(
     book_update: BookUpdate,
     request: Request,
     book_service: BookService = Depends(get_book_service),
-    user=Security(get_current_user),
+    user: User = Security(get_current_user),
 ):
     """
     Updates metadata for a specific book.
     """
-    updated = await book_service.update_book_by_id(book_id, book_update)
+    updated = await book_service.update_book_by_id(book_id, book_update, user.id)
 
     if not updated:
-        raise HTTPException(status_code=404, detail="Book not found")
+        raise HTTPException(status_code=404, detail="Book not found.")
 
     return construct_book_display(updated.__dict__, request)
 
@@ -176,7 +178,7 @@ async def update_book(
 async def delete_book(
     book_id: str,
     book_service: BookService = Depends(get_book_service),
-    user=Security(get_current_user),
+    user: User = Security(get_current_user),
 ):
     """
     Deletes an book (metadata and associated files).
@@ -203,17 +205,17 @@ async def get_book_cover(
         examples=["thumbnail", "original"],
     ),
     book_service: BookService = Depends(get_book_service),
-    user=Security(get_current_user),
+    user: User = Security(get_current_user),
 ):
     """
     Retrieves the cover image for a book.
     Optionally, a variant can be requested. Available variants
     depend on the implementation and may include 'thumbnail', 'original', etc.
     """
-    book = await book_service.get_book_by_id(book_id)
+    book = await book_service.get_book_by_id(book_id, user.id)
     storage_backend = await book_service.get_storage_backend(user)
 
-    if book.user_id != user.id or not book.file_hash:
+    if not book.file_hash:
         raise HTTPException(status_code=404, detail="Book does not exist.")
 
     if variant is None:
@@ -250,17 +252,15 @@ async def download_book_file(
     book_id: str,
     background_tasks: BackgroundTasks,
     book_service: BookService = Depends(get_book_service),
-    user=Security(get_current_user),
+    user: User = Security(get_current_user),
 ):
     """
     Download the book file for a specific book.
     """
-    book = await book_service.get_book_by_id(book_id)
+    book = await book_service.get_book_by_id(book_id, user.id)
 
     if (
-        not book
-        or book.user_id != user.id
-        or not book.file_path
+        not book.file_path
         or not book.file_hash
         or not book.stored_filename
     ):
@@ -298,11 +298,8 @@ async def download_book_file(
 async def get_book_status(
     book_id: str,
     book_service: BookService = Depends(get_book_service),
-    user=Security(get_current_user),
+    user: User = Security(get_current_user),
 ):
-    book = await book_service.get_book_by_id(book_id)
-
-    if not book:
-        raise HTTPException(status_code=404, detail="Book not found.")
+    book = await book_service.get_book_by_id(book_id, user.id)
 
     return {"status": book.status, "error": book.processing_error}
