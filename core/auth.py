@@ -1,5 +1,4 @@
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -36,10 +35,10 @@ def get_password_hash(password):
     return password_context.hash(password)
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
 
-    expire = datetime.now(timezone.utc) + (
+    expire = datetime.now(UTC) + (
         expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
 
@@ -48,7 +47,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     return encoded_jwt
 
 
-async def get_user_by_username(db: AsyncSession, username: str) -> Optional[User]:
+async def get_user_by_username(db: AsyncSession, username: str) -> User | None:
     result = await db.execute(select(User).where(User.username == username))
     return result.scalars().first()
 
@@ -57,7 +56,7 @@ async def authenticate_user(
     db: AsyncSession,
     username: str,
     password: str,
-) -> Optional[User]:
+) -> User | None:
     user = await get_user_by_username(db, username)
 
     if not user or not verify_password(password, user.password):

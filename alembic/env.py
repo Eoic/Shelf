@@ -1,6 +1,6 @@
+import asyncio
 import pathlib
 import sys
-import asyncio
 
 sys.path.append(str((pathlib.Path(__file__).parent.parent.parent).resolve()))
 
@@ -11,7 +11,6 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from alembic import context
 from database.base import Base
-from models import domain_models
 
 config = context.config
 
@@ -55,7 +54,9 @@ def run_migrations_online() -> None:
 
     """
     config_section = config.get_section(config.config_ini_section, {})
-    url = config_section.get("sqlalchemy.url") or config.get_main_option("sqlalchemy.url")
+    url = config_section.get("sqlalchemy.url") or config.get_main_option(
+        "sqlalchemy.url",
+    )
 
     if url and url.startswith("postgresql+asyncpg"):
         # Use async engine for async DB URLs
@@ -67,7 +68,7 @@ def run_migrations_online() -> None:
                     lambda sync_conn: context.configure(
                         connection=sync_conn,
                         target_metadata=target_metadata,
-                    )
+                    ),
                 )
                 async with connection.begin():
                     await connection.run_sync(context.run_migrations)

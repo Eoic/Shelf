@@ -1,12 +1,11 @@
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, HttpUrl
 
 
 class AuthorSchema(BaseModel):
     name: str
-    role: Optional[str] = None
+    role: str | None = None
 
 
 class IdentifierSchema(BaseModel):
@@ -15,19 +14,19 @@ class IdentifierSchema(BaseModel):
 
 
 class BookBase(BaseModel):
-    title: Optional[str] = None
-    authors: Optional[list[AuthorSchema]] = None
-    publisher: Optional[str] = None
-    publication_date: Optional[str] = None
-    isbn_10: Optional[str] = None
-    isbn_13: Optional[str] = None
-    language: Optional[str] = None
-    series_name: Optional[str] = None
-    series_index: Optional[float] = None
-    description: Optional[str] = None
-    tags: Optional[list[str]] = []
-    identifiers: Optional[list[IdentifierSchema]] = []
-    format: Optional[str] = None
+    title: str | None = None
+    authors: list[AuthorSchema] | None = None
+    publisher: str | None = None
+    publication_date: str | None = None
+    isbn_10: str | None = None
+    isbn_13: str | None = None
+    language: str | None = None
+    series_name: str | None = None
+    series_index: float | None = None
+    description: str | None = None
+    tags: list[str] | None = []
+    identifiers: list[IdentifierSchema] | None = []
+    format: str | None = None
 
 
 class BookCreate(BookBase):
@@ -36,12 +35,12 @@ class BookCreate(BookBase):
 
 class BookUpdate(BookBase):
     status: str
-    covers: Optional[list[dict[str, str]]] = None
-    original_filename: Optional[str] = None
-    stored_filename: Optional[str] = None
-    file_path: Optional[str] = None
-    file_hash: Optional[str] = None
-    file_size_bytes: Optional[int] = None
+    covers: list[dict[str, str]] | None = None
+    original_filename: str | None = None
+    stored_filename: str | None = None
+    file_path: str | None = None
+    file_hash: str | None = None
+    file_size_bytes: int | None = None
 
 
 class BookUploadQueued(BaseModel):
@@ -52,17 +51,17 @@ class BookUploadQueued(BaseModel):
 
 class BookDisplay(BookBase):
     id: str
-    file_hash: Optional[str] = None
-    file_path: Optional[str] = None
-    file_size_bytes: Optional[int] = None
-    download_url: Optional[HttpUrl] = None
+    file_hash: str | None = None
+    file_path: str | None = None
+    file_size_bytes: int | None = None
+    download_url: HttpUrl | None = None
     covers: list[dict[str, str]] = []
-    original_filename: Optional[str] = None
-    stored_filename: Optional[str] = None
+    original_filename: str | None = None
+    stored_filename: str | None = None
     uploaded_at: datetime
-    modified_at: Optional[datetime] = None
+    modified_at: datetime | None = None
     status: str
-    processing_error: Optional[str] = None
+    processing_error: str | None = None
 
     class Config:
         populate_by_name = True

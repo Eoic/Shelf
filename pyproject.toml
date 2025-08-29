@@ -6,7 +6,7 @@ name = "shelf"
 version = "0.1.0"
 description = "A FastAPI application for uploading, processing, and managing book files."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 authors = [
     {name = "Karolis Strazdas", email = "karolis.strazdas@protonmail.com"},
 ]
@@ -18,8 +18,6 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Framework :: FastAPI",
@@ -61,6 +59,10 @@ test = [
 ]
 dev = [
     "ruff",
+    "black",
+    "isort",
+    "mypy",
+    "bandit",
     "pre-commit",
     "coverage",
 ]
@@ -79,7 +81,7 @@ asyncio_mode = "auto"
 [tool.ruff]
 line-length = 88
 indent-width = 4
-target-version = "py39"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = [
@@ -112,17 +114,18 @@ select = [
     "RUF", 
 ]
 ignore = [
-    "E501", 
-    "B008", 
-    "S101", 
-    "ARG001", 
-    "ARG002", 
+    "E501",
+    "B008",
+    "S101",
+    "ARG001",
+    "ARG002",
+    "C901",
 ]
 fixable = ["ALL"]
 unfixable = []
 
 [tool.ruff.lint.isort]
-known-first-party = ["api", "core", "db", "models", "parsers", "services"]
+known-first-party = ["api", "core", "database", "models", "parsers", "services", "storage"]
 force-sort-within-sections = true
 
 [tool.ruff.format]
@@ -130,3 +133,20 @@ quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
+
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+
+[tool.isort]
+profile = "black"
+line_length = 88
+known_first_party = ["api", "core", "config", "database", "models", "parsers", "services", "storage"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+disallow_untyped_defs = false
+no_implicit_optional = false
+warn_redundant_casts = false
+warn_unused_ignores = false
