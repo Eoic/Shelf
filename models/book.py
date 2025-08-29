@@ -1,12 +1,17 @@
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import ARRAY, JSON
 from sqlalchemy.ext.mutable import MutableList
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from database.base import Base
+
+if TYPE_CHECKING:
+    from models.shelf import Shelf
 
 
 class Book(Base):
@@ -73,4 +78,8 @@ class Book(Base):
         String,
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
+    )
+
+    shelves: Mapped[list[Shelf]] = relationship(
+        "Shelf", secondary="shelf_books", back_populates="books",
     )

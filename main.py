@@ -6,6 +6,7 @@ from fastapi import FastAPI
 
 from api.v1.routes import auth as auth_v1_router
 from api.v1.routes import books as books_v1_router
+from api.v1.routes import shelves as shelves_v1_router
 from api.v1.routes import storage as storage_v1_router
 from core.config import settings
 
@@ -40,6 +41,12 @@ app.include_router(
     storage_v1_router.router,
     prefix="/api/v1/storage",
     tags=["Storage v1"],
+)
+
+app.include_router(
+    shelves_v1_router.router,
+    prefix="/api/v1/shelves",
+    tags=["Shelves v1"],
 )
 
 

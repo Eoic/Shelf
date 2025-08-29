@@ -1,8 +1,10 @@
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
+import hashlib
 
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
-from jose import jwt, JWTError
+from fastapi.security import APIKeyHeader, OAuth2PasswordBearer
+from jose import JWTError, jwt
+
 from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -24,7 +26,10 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
+oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl="/api/v1/auth/token", auto_error=False,
+)
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
 def verify_password(plain_password, hashed_password):
@@ -50,6 +55,12 @@ async def get_user_by_username(db: AsyncSession, username: str) -> User | None:
     return result.scalars().first()
 
 
+async def get_user_by_api_key(db: AsyncSession, api_key: str) -> User | None:
+    hashed = hashlib.sha256(api_key.encode()).hexdigest()
+    result = await db.execute(select(User).where(User.api_key_hash == hashed))
+    return result.scalars().first()
+
+
 async def authenticate_user(
     db: AsyncSession,
     username: str,
@@ -64,7 +75,8 @@ async def authenticate_user(
 
 
 async def get_current_user(
-    token: str = Depends(oauth2_scheme),
+    api_key: str | None = Depends(api_key_header),
+    token: str | None = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_database),
 ):
     credentials_exception = HTTPException(
@@ -73,18 +85,27 @@ async def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
 
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username = payload.get("sub")
-
-        if not isinstance(username, str):
-            raise credentials_exception
-    except JWTError as err:
-        raise credentials_exception from err
-
-    user = await get_user_by_username(db, username)
-
-    if user is None:
+    if api_key:
+        user = await get_user_by_api_key(db, api_key)
+        if user:
+            return user
         raise credentials_exception
 
-    return user
+    if token:
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            username = payload.get("sub")
+
+            if not isinstance(username, str):
+                raise credentials_exception
+        except JWTError as err:
+            raise credentials_exception from err
+
+        user = await get_user_by_username(db, username)
+
+        if user is None:
+            raise credentials_exception
+
+        return user
+
+    raise credentials_exception
