@@ -38,6 +38,7 @@ source .venv/bin/activate
 pip install -r requirements.txt  # or pip install -e .[dev]
 cp .env.example .env
 docker compose up -d
+alembic upgrade head
 ```
 
 ### Run the API
@@ -83,6 +84,11 @@ black --check .
 mypy .
 pytest
 ```
+
+## Notes
+### MinIO storage
+- MinIO `endpoint` in storage config is the URL of the MinIO server (e.g. `localhost:9000`).
+- Settings `secret_key` and `access_key` are username and password.
 
 ## Roadmap
 

@@ -26,7 +26,7 @@ def create_storage_backend(storage: Storage | None) -> StorageBackend:
     if storage is None:
         return FileSystemStorage()
 
-    backend_cls = STORAGE_BACKENDS.get(storage.storage_type)
+    backend_cls = STORAGE_BACKENDS.get(storage.storage_type.upper())
 
     if backend_cls is None:
         raise StorageBackendError(StorageBackendError.NOT_FOUND)

@@ -59,11 +59,11 @@ async def get_all_books(
 
     result = await db.execute(query.order_by(sort_column).offset(skip).limit(limit))
     books = result.scalars().all()
-
     count_query = select(func.count()).select_from(Book).where(Book.user_id == user_id)
 
     if search_query:
         count_query = count_query.where(Book.title.ilike(f"%{search_query}%"))
+
     if tags:
         for tag in tags:
             count_query = count_query.where(Book.tags.any(tag))

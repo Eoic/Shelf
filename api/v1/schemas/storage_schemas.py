@@ -3,6 +3,12 @@ from typing import Any
 from pydantic import BaseModel, field_validator, ValidationError
 
 
+class UnsupportedStorageTypeError(ValueError):
+    def __init__(self, storage_type: str):
+        supported_types = "MINIO, FILE_SYSTEM"
+        super().__init__(f"Unsupported storage type: '{storage_type}'. Supported types are: {supported_types}")
+
+
 class FileStorageConfig(BaseModel):
     pass
 
@@ -16,13 +22,13 @@ class MinIOConfig(BaseModel):
 
 
 def parse_config(storage_type: str, value: Any):
-    match storage_type:
+    match storage_type.upper():
         case "MINIO":
             return MinIOConfig.model_validate(value)
         case "FILE_SYSTEM":
             return FileStorageConfig.model_validate(value)
         case _:
-            raise ValueError
+            raise UnsupportedStorageTypeError(storage_type)
 
 
 class StorageBase(BaseModel):
@@ -39,7 +45,14 @@ class StorageBase(BaseModel):
             try:
                 return parse_config(storage_type, value)
             except ValidationError as error:
-                raise ValueError from error
+                error_messages = []
+
+                for err in error.errors():
+                    field_path = ".".join(str(loc) for loc in err["loc"])
+                    error_messages.append(f"{field_path}: {err['msg']}")
+
+                detailed_message = f"Configuration validation failed: {'; '.join(error_messages)}"
+                raise ValueError(detailed_message) from error
 
         return value
 

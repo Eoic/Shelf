@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from alembic import context
 from database.base import Base
+from models.domain_models import *  # noqa: F403
 
 config = context.config
 
