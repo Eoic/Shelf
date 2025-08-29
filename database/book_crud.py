@@ -55,10 +55,7 @@ async def get_all_books(
             query = query.where(Book.tags.any(tag))
 
     sort_column = getattr(Book, sort_by, Book.title)
-    if sort_order.lower() == "desc":
-        sort_column = sort_column.desc()
-    else:
-        sort_column = sort_column.asc()
+    sort_column = sort_column.desc() if sort_order.lower() == "desc" else sort_column.asc()
 
     result = await db.execute(query.order_by(sort_column).offset(skip).limit(limit))
     books = result.scalars().all()

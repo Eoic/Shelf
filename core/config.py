@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     SERVER_PORT: int = int(os.getenv("SERVER_PORT", 8000))
     SERVER_PROTOCOL: str = os.getenv("SERVER_PROTOCOL", "http")
 
+    # CORS.
+    CORS_ORIGINS: list[str] = os.getenv("CORS_ORIGINS", "*").split(",")
+
     # Database.
     POSTGRES_USER: str = os.getenv("POSTGRES_USER", "postgres")
     POSTGRES_PASSWORD: str = os.getenv("POSTGRES_PASSWORD", "postgres")

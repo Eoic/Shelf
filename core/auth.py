@@ -1,10 +1,9 @@
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, UTC
 import hashlib
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import APIKeyHeader, OAuth2PasswordBearer
-from jose import JWTError, jwt
-
+from jose import jwt, JWTError
 from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -27,7 +26,8 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl="/api/v1/auth/token", auto_error=False,
+    tokenUrl="/api/v1/auth/token",
+    auto_error=False,
 )
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 

@@ -32,7 +32,10 @@ class User(Base):
     )
 
     api_key_hash: Mapped[str | None] = mapped_column(
-        String, unique=True, index=True, nullable=True,
+        String,
+        unique=True,
+        index=True,
+        nullable=True,
     )
 
     preferences: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)

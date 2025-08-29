@@ -4,7 +4,7 @@ from api.v1.schemas.shelf_schemas import ShelfCreate, ShelfRead
 from core.auth import get_current_user
 from models.user import User
 from services.book_service import BookService, get_book_service
-from services.shelf_service import ShelfService, get_shelf_service
+from services.shelf_service import get_shelf_service, ShelfService
 
 router = APIRouter()
 
@@ -30,14 +30,13 @@ async def list_shelves(
     user: User = Security(get_current_user),
 ):
     shelves = await shelf_service.list_shelves(user.id)
-    return [
-        ShelfRead(id=s.id, name=s.name, book_ids=[b.id for b in s.books])
-        for s in shelves
-    ]
+    return [ShelfRead(id=s.id, name=s.name, book_ids=[b.id for b in s.books]) for s in shelves]
 
 
 @router.get(
-    "/{shelf_id}", response_model=ShelfRead, summary="Retrieve a shelf",
+    "/{shelf_id}",
+    response_model=ShelfRead,
+    summary="Retrieve a shelf",
 )
 async def get_shelf(
     shelf_id: str,
@@ -76,7 +75,9 @@ async def add_book_to_shelf(
 
 
 @router.delete(
-    "/{shelf_id}/books/{book_id}", status_code=204, summary="Remove a book from a shelf",
+    "/{shelf_id}/books/{book_id}",
+    status_code=204,
+    summary="Remove a book from a shelf",
 )
 async def remove_book_from_shelf(
     shelf_id: str,
