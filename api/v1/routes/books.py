@@ -25,7 +25,6 @@ from core.auth import get_current_user
 from core.config import settings
 from models.user import User
 from services.book_service import BookService, get_book_service
-from services.storage.filesystem_storage import FileSystemStorage
 from services.storage.storage_backend import StorageFileType
 
 router = APIRouter()
@@ -120,7 +119,13 @@ async def list_books(
     Lists books with pagination, optional search, filtering and sorting.
     """
     books, total = await book_service.get_books(
-        user.id, skip, limit, search, tags, sort_by, sort_order,
+        user.id,
+        skip,
+        limit,
+        search,
+        tags,
+        sort_by,
+        sort_order,
     )
     items = [construct_book_display(book, request) for book in books]
     return PaginatedBookResponse(items=items, total=total)
@@ -229,7 +234,7 @@ async def get_book_cover(
             )
 
             if cover_path and cover_path.exists():
-                if not isinstance(storage_backend, FileSystemStorage):
+                if not storage_backend.is_local:
                     background_tasks.add_task(cover_path.unlink)
 
                 return FileResponse(cover_path, background=background_tasks)
@@ -257,11 +262,7 @@ async def download_book_file(
     """
     book = await book_service.get_book_by_id(book_id, user.id)
 
-    if (
-        not book.file_path
-        or not book.file_hash
-        or not book.stored_filename
-    ):
+    if not book.file_path or not book.file_hash or not book.stored_filename:
         raise HTTPException(status_code=404, detail="File not found.")
 
     storage_backend = await book_service.get_storage_backend(user)
@@ -276,7 +277,7 @@ async def download_book_file(
     if not book_path or not book_path.exists():
         raise HTTPException(status_code=404, detail="File not found.")
 
-    if not isinstance(storage_backend, FileSystemStorage):
+    if not storage_backend.is_local:
         background_tasks.add_task(book_path.unlink)
 
     return FileResponse(

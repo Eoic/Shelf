@@ -7,6 +7,10 @@ from services.storage.storage_backend import StorageBackend, StorageFileType
 
 
 class FileSystemStorage(StorageBackend):
+    @property
+    def is_local(self) -> bool:
+        return True
+
     def get_prepared_book_dir(self, user: User, book_dir: str) -> Path:
         book_path = settings.BOOK_FILES_DIR / str(user.id) / book_dir
         book_path.mkdir(parents=True, exist_ok=True)

@@ -17,19 +17,13 @@ from models.user import User
 from parsers.base_parser import BookParser
 from parsers.epub_parser import EpubParser
 from parsers.pdf_parser import PdfParser
+from services.storage import create_storage_backend
 from services.storage.exceptions import StorageBackendError
-from services.storage.filesystem_storage import FileSystemStorage
-from services.storage.minio_storage import MinIOStorage
 from services.storage.storage_backend import StorageBackend, StorageFileType
 
 PARSER_MAPPING = {
     "EPUB": EpubParser,
     "PDF": PdfParser,
-}
-
-STORAGE_BACKENDS = {
-    "FILE_SYSTEM": FileSystemStorage,
-    "MINIO": MinIOStorage,
 }
 
 
@@ -252,7 +246,7 @@ class BookService:
 
             try:
                 storage_backend = await self.get_storage_backend(user)
-            except (StorageBackendError, KeyError) as error:
+            except StorageBackendError as error:
                 logger.exception("Error getting storage backend.")
 
                 await self.update_book_status(
@@ -396,7 +390,7 @@ class BookService:
 
         try:
             storage_backend = await self.get_storage_backend(user)
-        except (StorageBackendError, KeyError):
+        except StorageBackendError:
             logger.exception("Error getting storage backend.")
             return 0
 
@@ -439,23 +433,7 @@ class BookService:
         user_id = user.id
         storage = await get_default_storage(self.db, user_id)
 
-        if not storage:
-            return STORAGE_BACKENDS["FILE_SYSTEM"]()
-
-        match storage.storage_type:
-            case "FILE_SYSTEM":
-                return STORAGE_BACKENDS["FILE_SYSTEM"]()
-            case "MINIO":
-                config = storage.config
-                return STORAGE_BACKENDS["MINIO"](
-                    access_key=config["access_key"],
-                    secret_key=config["secret_key"],
-                    endpoint=config["endpoint"],
-                    bucket_name=config["bucket_name"],
-                    secure=config.get("secure", False),
-                )
-            case _:
-                raise StorageBackendError(StorageBackendError.NOT_FOUND)
+        return create_storage_backend(storage)
 
 
 def get_book_service(
