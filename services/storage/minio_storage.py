@@ -28,6 +28,10 @@ class MinIOStorage(StorageBackend):
             secure=secure,
         )
 
+    @property
+    def is_local(self) -> bool:
+        return False
+
     def get_prepared_book_dir(self, user: User, book_dir: str) -> Path:
         return Path(f"books/{user.id}/{book_dir}")
 
@@ -39,7 +43,8 @@ class MinIOStorage(StorageBackend):
         filetype: StorageFileType,
     ) -> Path | None:
         object_name = self._get_object_name(user, book_dir, filename, filetype)
-        local_path = settings.TEMP_FILES_DIR / filename
+        local_path = settings.TEMP_FILES_DIR / str(user.id) / book_dir / filename
+        local_path.parent.mkdir(parents=True, exist_ok=True)
 
         try:
             self.client.fget_object(self.bucket_name, object_name, str(local_path))

@@ -11,6 +11,12 @@ class StorageFileType(Enum):
 
 
 class StorageBackend(ABC):
+    @property
+    @abstractmethod
+    def is_local(self) -> bool:
+        """Indicates whether files are stored locally on the server."""
+        pass
+
     @abstractmethod
     def get_file(
         self,
