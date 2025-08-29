@@ -337,9 +337,7 @@ class BookService:
             search_query,
         )
 
-        return [
-            BookInDB.model_validate(book.__dict__).model_dump() for book in books
-        ], int(count or 0)
+        return [BookInDB.model_validate(book.__dict__).model_dump() for book in books], int(count or 0)
 
     async def get_book_by_id(self, book_id: str):
         book = await book_crud.get_book_by_id(self.db, book_id)

@@ -40,9 +40,7 @@ def construct_book_display(book_data: dict, request: Request) -> BookDisplay:
     book_data = book_data.copy()
 
     for cover in book_data["covers"]:
-        cover["url"] = (
-            f"{base_url}api/v1/books/{book_data['id']}/cover?variant={cover['variant']}"
-        )
+        cover["url"] = f"{base_url}api/v1/books/{book_data['id']}/cover?variant={cover['variant']}"
 
     if "file_path" in book_data:
         book_data["download_url"] = f"{base_url}api/v1/books/{book_data['id']}/download"
@@ -257,13 +255,7 @@ async def download_book_file(
     """
     book = await book_service.get_book_by_id(book_id)
 
-    if (
-        not book
-        or book.user_id != user.id
-        or not book.file_path
-        or not book.file_hash
-        or not book.stored_filename
-    ):
+    if not book or book.user_id != user.id or not book.file_path or not book.file_hash or not book.stored_filename:
         raise HTTPException(status_code=404, detail="File not found.")
 
     storage_backend = await book_service.get_storage_backend(user)

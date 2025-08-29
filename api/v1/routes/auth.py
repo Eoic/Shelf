@@ -93,9 +93,7 @@ async def update_user_preferences(
     db: AsyncSession = Depends(get_database),
     current_user: User = Security(get_current_user),
 ):
-    current_preferences = (
-        current_user.preferences if isinstance(current_user.preferences, dict) else {}
-    )
+    current_preferences = current_user.preferences if isinstance(current_user.preferences, dict) else {}
 
     new_preferences = {
         **current_preferences,

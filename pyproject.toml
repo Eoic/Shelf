@@ -79,7 +79,7 @@ python_files = "test_*.py tests_*.py"
 asyncio_mode = "auto"
 
 [tool.ruff]
-line-length = 88
+line-length = 120
 indent-width = 4
 target-version = "py311"
 
@@ -125,6 +125,7 @@ fixable = ["ALL"]
 unfixable = []
 
 [tool.ruff.lint.isort]
+order-by-type = false
 known-first-party = ["api", "core", "database", "models", "parsers", "services", "storage"]
 force-sort-within-sections = true
 
@@ -135,12 +136,13 @@ skip-magic-trailing-comma = false
 line-ending = "auto"
 
 [tool.black]
-line-length = 88
+line-length = 120
 target-version = ["py311"]
 
 [tool.isort]
+order_by_type = false
 profile = "black"
-line_length = 88
+line_length = 120
 known_first_party = ["api", "core", "config", "database", "models", "parsers", "services", "storage"]
 
 [tool.mypy]
